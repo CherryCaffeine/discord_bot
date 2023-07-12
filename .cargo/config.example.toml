@@ -1,0 +1,4 @@
+[env]
+DISCORD_PREFIX = "~"
+DISCORD_BOT_CHANNEL = "1127121133884428368"
+DISCORD_TOKEN = "<Your token goes here>"
