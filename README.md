@@ -30,6 +30,7 @@
 ## Learn more about writing Discord bots with Shuttle, Serenity, and Rust
 
 * YouTube playlist ["Discord Bot with Rust and Serenity - Meta Open Source"](https://www.youtube.com/watch?v=NVMHWUly1rc&list=PLzIwronG0sE5lQCPFP69Ukgz4d9dngaSi&ab_channel=MetaOpenSource).
+* YouTube playlist ["Rust Programming Tutorials"](https://www.youtube.com/playlist?list=PLVvjrrRCBy2JSHf9tGxGKJ-bYAN_uDCUL).
 * [The Rust Programming Language book](https://doc.rust-lang.org/book/).
 * [Shuttle documentation](https://docs.shuttle.rs/introduction/welcome).
 * [Serenity documentation](https://docs.rs/serenity/latest/serenity/).
