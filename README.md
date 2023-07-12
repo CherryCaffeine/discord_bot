@@ -11,7 +11,7 @@
 ## Usage
 
 * Use `.cargo/config.example.toml` as a template for your own `.cargo/config.toml`. Use the necessary [`DISCORD_TOKEN`](https://www.writebots.com/discord-bot-token/).
-* Use `cargo run` to run the bot.
+* Use `cargo shuttle run` to run the bot locally.
 * 😎 You got it! 😎
 
 ## How to contribute
