@@ -27,9 +27,10 @@
 * Ping me (`@dmitrii_demenev`) on Discord to speed up the [review](https://docs.github.com/en/get-started/quickstart/github-glossary#pull-request-review) of the [pull request](https://docs.github.com/en/get-started/quickstart/github-glossary#pull-request).
 * 🎉 Celebrate your contribution! 🎉 You deserve it because you're 🔥
 
-## Learn more about writing Discord bots with Serenity and Rust
+## Learn more about writing Discord bots with Shuttle, Serenity, and Rust
 
 * YouTube playlist ["Discord Bot with Rust and Serenity - Meta Open Source"](https://www.youtube.com/watch?v=NVMHWUly1rc&list=PLzIwronG0sE5lQCPFP69Ukgz4d9dngaSi&ab_channel=MetaOpenSource).
-* [Serenity documentation](https://docs.rs/serenity/latest/serenity/).
 * [The Rust Programming Language book](https://doc.rust-lang.org/book/).
+* [Shuttle documentation](https://docs.shuttle.rs/introduction/welcome).
+* [Serenity documentation](https://docs.rs/serenity/latest/serenity/).
 * Ping me on Discord: `@dmitrii_demenev`.
