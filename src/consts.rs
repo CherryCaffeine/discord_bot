@@ -1,7 +1,23 @@
-use serenity::{model::prelude::ChannelId, prelude::GatewayIntents};
+use serenity::{
+    model::prelude::{ChannelId, GuildId},
+    prelude::GatewayIntents,
+};
+
+pub(crate) const DISCORD_SERVER_ID: GuildId = {
+    let id: &str = env!("DISCORD_SERVER_ID");
+    let id: u64 = const_str::parse!(id, u64);
+    GuildId(id)
+};
 
 pub(crate) const DISCORD_BOT_CHANNEL: ChannelId = {
     let id: &str = env!("DISCORD_BOT_CHANNEL");
+    let id: u64 = const_str::parse!(id, u64);
+    ChannelId(id)
+};
+
+#[allow(dead_code)]
+pub(crate) const DISCORD_SELF_ROLE_CHANNEL: ChannelId = {
+    let id: &str = env!("DISCORD_SELF_ROLE_CHANNEL");
     let id: u64 = const_str::parse!(id, u64);
     ChannelId(id)
 };
