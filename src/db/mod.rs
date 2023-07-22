@@ -1,17 +1,8 @@
-use core::convert::identity as id;
+use crate::macros::i64_from_as_ref_user_id;
 use serenity::model::prelude::UserId;
 use sqlx::PgPool;
 
 pub(crate) mod dao;
-
-macro_rules! i64_from_as_ref_user_id {
-    ($discord_id:expr) => {{
-        let UserId(ref discord_id) = $discord_id.as_ref();
-        let discord_id: u64 = discord_id.clone();
-        let discord_id: i64 = id::<u64>(discord_id) as i64;
-        discord_id
-    }};
-}
 
 pub(crate) async fn add_signed_exp(
     pool: &PgPool,

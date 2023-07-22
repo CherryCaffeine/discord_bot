@@ -14,6 +14,7 @@ use tokio::sync::RwLockWriteGuard;
 mod app_cache;
 mod consts;
 mod db;
+pub(crate) mod macros;
 mod self_roles;
 
 use app_cache::AppCache;
@@ -21,6 +22,7 @@ use consts::{
     DISCORD_BOT_CHANNEL, DISCORD_INTENTS, DISCORD_PREFIX, DISCORD_SERVER_ID, DISCORD_TOKEN,
     EXP_PER_MSG,
 };
+use ux::u63;
 
 struct AppCacheKey;
 
@@ -102,12 +104,19 @@ impl EventHandler for Bot {
         println!("{} is at your service! 🌸", ready.user.name);
     }
 
-    async fn message(&self, _: Context, msg: Message) {
+    async fn message(&self, ctx: Context, msg: Message) {
         if msg.content.starts_with(DISCORD_PREFIX) {
             return;
         }
         println!("{}: {}", msg.author.name, msg.content);
-        let res = db::add_signed_exp(&self.pool, &msg.author.id, EXP_PER_MSG).await;
+        let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
+        let app_cache: &mut AppCache = wlock
+            .get_mut::<AppCacheKey>()
+            .expect("Failed to get the app cache from the typemap");
+
+        let res: Result<u63, sqlx::Error> =
+            app_cache::sync::add_signed_exp(app_cache, &self.pool, &msg.author.id, EXP_PER_MSG)
+                .await;
 
         match res {
             Ok(exp) => {

@@ -1,8 +1,8 @@
 use core::convert::identity as id;
+use drain_at_sorted_unchecked::drain_at_sorted_unchecked;
 use serenity::model::prelude::Member;
 use sqlx::PgPool;
 use std::cmp::Ordering;
-use drain_at_sorted_unchecked::drain_at_sorted_unchecked;
 
 use crate::db::{self, dao};
 
@@ -142,7 +142,7 @@ impl Diff {
         db::add_newcomers(pool, &newcomers)
             .await
             .expect("Failed to add newcomers to the database");
-        
+
         // Safety:
         //
         // * `quitters_indices` are in ascending order by construction

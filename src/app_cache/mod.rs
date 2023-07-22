@@ -6,7 +6,9 @@ use ux::u63;
 
 use crate::db::{self, dao};
 
+mod in_cache;
 mod membership;
+pub(crate) mod sync;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -45,7 +47,10 @@ impl AppCache {
         });
 
         let diff = membership::Diff::new(db_members, fetched_members);
-        let users: Vec<ServerMember> = diff.sync_and_distill(pool).await.into_iter()
+        let users: Vec<ServerMember> = diff
+            .sync_and_distill(pool)
+            .await
+            .into_iter()
             .map(ServerMember::from)
             .collect();
 
