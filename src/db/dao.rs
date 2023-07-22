@@ -15,5 +15,5 @@ pub(crate) struct User {
 #[allow(dead_code)]
 pub(crate) struct ServerMember {
     pub(crate) discord_id: i64,
-    exp: i64,
+    pub(crate) exp: i64,
 }

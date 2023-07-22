@@ -2,6 +2,7 @@ use core::convert::identity as id;
 use serenity::model::prelude::Member;
 use sqlx::PgPool;
 use std::cmp::Ordering;
+use drain_at_sorted_unchecked::drain_at_sorted_unchecked;
 
 use crate::db::{self, dao};
 
@@ -113,14 +114,19 @@ impl Diff {
         }
     }
 
-    pub(super) async fn update_db(&self, pool: &PgPool) {
-        let mut quiters = Vec::<i64>::new();
+    pub(super) async fn sync_and_distill(mut self, pool: &PgPool) -> Vec<dao::ServerMember> {
+        // quitters' data is not stored in Vec<(usize, i64)> because
+        // sqlx favors slices over iterators.
+        let mut quitters = Vec::<i64>::new();
+        let mut quitters_indices = Vec::<usize>::new();
         let mut newcomers = Vec::<i64>::new();
+
         for [db_idx_opt, fetched_idx_opt] in &self.pairings {
             match [db_idx_opt, fetched_idx_opt] {
                 [Some(db_idx), _fetched_idx @ None] => {
-                    let quiter: &dao::ServerMember = &self.db_info[*db_idx];
-                    quiters.push(quiter.discord_id);
+                    let quitter: &dao::ServerMember = &self.db_info[*db_idx];
+                    quitters_indices.push(*db_idx);
+                    quitters.push(quitter.discord_id);
                 }
                 [_db_idx @ None, Some(fetched_idx)] => {
                     let newcomer: &Member = &self.fetched_info[*fetched_idx];
@@ -130,11 +136,20 @@ impl Diff {
                 _ => {}
             }
         }
-        db::mark_as_quitters(pool, &quiters)
+        db::mark_as_quitters(pool, &quitters)
             .await
             .expect("Failed to mark quitters as such in the database");
         db::add_newcomers(pool, &newcomers)
             .await
             .expect("Failed to add newcomers to the database");
+        
+        // Safety:
+        //
+        // * `quitters_indices` are in ascending order by construction
+        // * the indices in `quitters_indices` are valid indices in `self.db_info`
+        // * the indices in `quitters_indices` are unique
+        // * the data in `self.db_info` is trivially movable
+        unsafe { drain_at_sorted_unchecked(&mut self.db_info, quitters_indices) };
+        self.db_info
     }
 }

@@ -95,7 +95,9 @@ impl EventHandler for Bot {
 
         let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
 
-        wlock.insert::<AppCacheKey>(AppCache::new(&self.pool, members).await);
+        let app_cache = AppCache::new(&self.pool, members).await;
+
+        wlock.insert::<AppCacheKey>(app_cache);
 
         println!("{} is at your service! 🌸", ready.user.name);
     }
