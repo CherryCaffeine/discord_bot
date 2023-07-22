@@ -1,6 +1,6 @@
 # Discord bot with ❤️ for Cherry
 
-## Requirements
+## Required tools
 
 * [Rust programming language tooling](https://www.rust-lang.org/tools/install)
 * [`cargo-binstall`](https://github.com/cargo-bins/cargo-binstall)
