@@ -1,30 +1,31 @@
-use std::collections::HashMap;
-
 use serenity::async_trait;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::CommandResult;
 use serenity::framework::StandardFramework;
-use serenity::http::Http;
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
-use serenity::model::prelude::{Guild, Member, PartialGuild, UserId, RoleId, Role};
+use serenity::model::prelude::{Guild, Member, PartialGuild, Role, RoleId};
 use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
 use sqlx::{Executor, PgPool};
+use std::collections::HashMap;
 use tokio::sync::RwLockWriteGuard;
+use ux::u63;
 
 mod app_cache;
 mod consts;
 mod db;
-pub(crate) mod macros;
 mod roles;
+pub(crate) mod util;
 
 use app_cache::AppCache;
 use consts::{
     DISCORD_BOT_CHANNEL, DISCORD_INTENTS, DISCORD_PREFIX, DISCORD_SERVER_ID, DISCORD_TOKEN,
     EXP_PER_MSG,
 };
-use ux::u63;
+use util::members;
+
+use crate::util::say_wo_unintended_mentions;
 
 struct AppCacheKey;
 
@@ -50,29 +51,6 @@ async fn build_client<H: EventHandler + 'static>(event_handler: H) -> Client {
         .event_handler(event_handler)
         .await
         .expect("Err creating client")
-}
-
-async fn members(http: impl AsRef<Http>) -> Vec<Member> {
-    const DEFAULT_LIMIT: usize = 1000;
-    const USE_DEFAULT_LIMIT: Option<u64> = None;
-    const NO_USER_ID_OFFSET: Option<UserId> = None;
-
-    let members = DISCORD_SERVER_ID
-        .members(http, USE_DEFAULT_LIMIT, NO_USER_ID_OFFSET)
-        .await
-        .unwrap_or_else(|e| {
-            panic!("Failed to get the list of server members: {e}");
-        });
-
-    if members.len() == DEFAULT_LIMIT {
-        let err = concat!(
-            "Default limit for GuildId::members(...) reached.\n",
-            "Chunkwise member list retrieval is required."
-        );
-        panic!("{err}");
-    }
-
-    members
 }
 
 impl Bot {
@@ -108,6 +86,9 @@ impl EventHandler for Bot {
 
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.content.starts_with(DISCORD_PREFIX) {
+            return;
+        }
+        if msg.author.bot {
             return;
         }
         println!("{}: {}", msg.author.name, msg.content);
@@ -156,7 +137,7 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
         msg.delete(&ctx.http).await.unwrap_or_else(|e| {
             eprintln!("Error deleting message: {e}");
         });
-        return Ok(())
+        return Ok(());
     }
     // TODO: Randomize response
     msg.reply(ctx, "Yes, darling? 💕").await?;
@@ -166,7 +147,7 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 async fn role_ids(ctx: &Context, msg: &Message) -> CommandResult {
-    let roles: HashMap<RoleId,Role> = DISCORD_SERVER_ID.roles(&ctx.http).await?;
+    let roles: HashMap<RoleId, Role> = DISCORD_SERVER_ID.roles(&ctx.http).await?;
 
     let response: String = {
         let mut msg_builder = MessageBuilder::new();
@@ -181,18 +162,19 @@ async fn role_ids(ctx: &Context, msg: &Message) -> CommandResult {
                 .push(": ")
                 .push(role_id.0.to_string())
                 .push("\n");
-        };
+        }
         msg_builder.build()
     };
 
     if msg.channel_id != DISCORD_BOT_CHANNEL {
-        DISCORD_BOT_CHANNEL.say(&ctx.http, &response).await?;
+        say_wo_unintended_mentions(DISCORD_BOT_CHANNEL, &ctx, Some(msg.author.id), &response)
+            .await?;
         msg.delete(&ctx.http).await.unwrap_or_else(|e| {
             eprintln!("Error deleting message: {e}");
         });
-        return Ok(())
+        return Ok(());
     };
-    msg.reply(&ctx.http, &response).await?;
+    say_wo_unintended_mentions(msg.channel_id, &ctx, Some(msg.author.id), &response).await?;
     Ok(())
 }
 

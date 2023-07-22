@@ -1,7 +1,7 @@
 use std::convert::identity as id;
 
 use super::in_cache;
-use crate::macros::u63_from_as_ref_user_id;
+use crate::util::macros::u63_from_as_ref_user_id;
 use serenity::model::prelude::UserId;
 use sqlx::PgPool;
 use ux::u63;

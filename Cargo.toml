@@ -15,6 +15,7 @@ tracing = "0.1.37"
 const-str = "0.5"
 ux = "0.1.5"
 drain_at_sorted_unchecked = "0.1"
+rand = "0.8"
 
 [dependencies.serenity]
 version = "0.11"

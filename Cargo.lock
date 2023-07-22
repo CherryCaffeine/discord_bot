@@ -275,6 +275,7 @@ dependencies = [
  "anyhow",
  "const-str",
  "drain_at_sorted_unchecked",
+ "rand",
  "serenity",
  "shuttle-runtime",
  "shuttle-serenity",

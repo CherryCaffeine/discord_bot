@@ -1,4 +1,4 @@
-use crate::macros::i64_from_as_ref_user_id;
+use crate::util::macros::i64_from_as_ref_user_id;
 use serenity::model::prelude::UserId;
 use sqlx::PgPool;
 
