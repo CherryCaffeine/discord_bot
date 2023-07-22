@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serenity::async_trait;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::CommandResult;
@@ -5,7 +7,7 @@ use serenity::framework::StandardFramework;
 use serenity::http::Http;
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
-use serenity::model::prelude::{Guild, Member, PartialGuild, UserId};
+use serenity::model::prelude::{Guild, Member, PartialGuild, UserId, RoleId, Role};
 use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
 use sqlx::{Executor, PgPool};
@@ -15,7 +17,7 @@ mod app_cache;
 mod consts;
 mod db;
 pub(crate) mod macros;
-mod self_roles;
+mod roles;
 
 use app_cache::AppCache;
 use consts::{
@@ -31,7 +33,7 @@ impl TypeMapKey for AppCacheKey {
 }
 
 #[group]
-#[commands(ping)]
+#[commands(ping, role_ids)]
 struct General;
 
 struct Bot {
@@ -154,10 +156,43 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
         msg.delete(&ctx.http).await.unwrap_or_else(|e| {
             eprintln!("Error deleting message: {e}");
         });
+        return Ok(())
     }
     // TODO: Randomize response
     msg.reply(ctx, "Yes, darling? 💕").await?;
 
+    Ok(())
+}
+
+#[command]
+async fn role_ids(ctx: &Context, msg: &Message) -> CommandResult {
+    let roles: HashMap<RoleId,Role> = DISCORD_SERVER_ID.roles(&ctx.http).await?;
+
+    let response: String = {
+        let mut msg_builder = MessageBuilder::new();
+        msg_builder
+            .mention(&msg.author)
+            .push("\n\n")
+            .push("Roles' IDs:\n");
+        for (role_id, role) in roles.iter() {
+            msg_builder
+                .push("\t")
+                .push(role.name.as_str())
+                .push(": ")
+                .push(role_id.0.to_string())
+                .push("\n");
+        };
+        msg_builder.build()
+    };
+
+    if msg.channel_id != DISCORD_BOT_CHANNEL {
+        DISCORD_BOT_CHANNEL.say(&ctx.http, &response).await?;
+        msg.delete(&ctx.http).await.unwrap_or_else(|e| {
+            eprintln!("Error deleting message: {e}");
+        });
+        return Ok(())
+    };
+    msg.reply(&ctx.http, &response).await?;
     Ok(())
 }
 
