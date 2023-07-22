@@ -6,7 +6,7 @@ use serenity::{
     utils::MessageBuilder,
 };
 
-use crate::consts::DISCORD_SERVER_ID;
+use crate::immut_data::consts::DISCORD_SERVER_ID;
 
 pub(crate) mod macros;
 
@@ -41,7 +41,7 @@ pub(super) async fn say_wo_unintended_mentions(
 ) -> serenity::Result<()> {
     // The function works by sending a message with a random emote, then editing
 
-    const SHORT_LIVED_MESSAGES: &[&'static str] = &[
+    const SHORT_LIVED_MESSAGES: &[&str] = &[
         "Hi there :wink:",
         "You're lovely :kissing_heart:",
         "You're cute :smiling_face_with_3_hearts:",

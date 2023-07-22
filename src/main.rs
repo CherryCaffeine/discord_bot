@@ -1,4 +1,5 @@
 use serenity::async_trait;
+use serenity::client::bridge::gateway::ShardManager;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::CommandResult;
 use serenity::framework::StandardFramework;
@@ -9,23 +10,29 @@ use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
 use sqlx::{Executor, PgPool};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::RwLockWriteGuard;
 use ux::u63;
 
 mod app_cache;
-mod consts;
 mod db;
+pub(crate) mod immut_data;
 mod roles;
 pub(crate) mod util;
 
+use crate::util::say_wo_unintended_mentions;
 use app_cache::AppCache;
-use consts::{
+use immut_data::consts::{
     DISCORD_BOT_CHANNEL, DISCORD_INTENTS, DISCORD_PREFIX, DISCORD_SERVER_ID, DISCORD_TOKEN,
     EXP_PER_MSG,
 };
 use util::members;
 
-use crate::util::say_wo_unintended_mentions;
+struct ShardManagerKey;
+
+impl TypeMapKey for ShardManagerKey {
+    type Value = Arc<Mutex<ShardManager>>;
+}
 
 struct AppCacheKey;
 
@@ -34,7 +41,7 @@ impl TypeMapKey for AppCacheKey {
 }
 
 #[group]
-#[commands(ping, role_ids)]
+#[commands(ping, role_ids, quit)]
 struct General;
 
 struct Bot {
@@ -43,14 +50,25 @@ struct Bot {
 
 async fn build_client<H: EventHandler + 'static>(event_handler: H) -> Client {
     let framework = StandardFramework::new()
-        .configure(|c| c.prefix(DISCORD_PREFIX))
+        .configure(|c| {
+            c.prefix(DISCORD_PREFIX);
+            c.owners(immut_data::dynamic::owners());
+            c
+        })
         .group(&GENERAL_GROUP);
 
-    Client::builder(DISCORD_TOKEN, DISCORD_INTENTS)
+    let client = Client::builder(DISCORD_TOKEN, DISCORD_INTENTS)
         .framework(framework)
         .event_handler(event_handler)
         .await
-        .expect("Err creating client")
+        .expect("Err creating client");
+
+    {
+        let mut wlock: RwLockWriteGuard<TypeMap> = client.data.write().await;
+        wlock.insert::<ShardManagerKey>(client.shard_manager.clone());
+    }
+
+    client
 }
 
 impl Bot {
@@ -155,7 +173,7 @@ async fn role_ids(ctx: &Context, msg: &Message) -> CommandResult {
             .mention(&msg.author)
             .push("\n\n")
             .push("Roles' IDs:\n");
-        for (role_id, role) in roles.iter() {
+        for (role_id, role) in &roles {
             msg_builder
                 .push("\t")
                 .push(role.name.as_str())
@@ -178,17 +196,27 @@ async fn role_ids(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
+#[command]
+async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
+    let data = ctx.data.read().await;
+
+    if let Some(sm) = data.get::<ShardManagerKey>() {
+        msg.reply(ctx, "Shutting down!").await?;
+        let mut wlock = sm.lock().await;
+        wlock.shutdown_all().await;
+        std::process::exit(0);
+    } else {
+        msg.reply(ctx, "There was a problem getting the shard manager")
+            .await?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serenity::client::bridge::gateway::ShardManager;
     use std::sync::Arc;
-
-    struct ShardManagerKey;
-
-    impl TypeMapKey for ShardManagerKey {
-        type Value = Arc<Mutex<ShardManager>>;
-    }
 
     struct TestEventHandler;
 
@@ -215,11 +243,6 @@ mod tests {
     #[tokio::test]
     async fn test_props() {
         let mut client = build_client(TestEventHandler).await;
-
-        {
-            let mut wlock = client.data.write().await;
-            wlock.insert::<ShardManagerKey>(client.shard_manager.clone());
-        }
 
         if let Err(why) = client.start().await {
             println!("Client error: {:?}", why);
