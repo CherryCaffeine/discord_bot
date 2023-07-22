@@ -197,6 +197,7 @@ async fn role_ids(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
+#[owners_only]
 async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
 
