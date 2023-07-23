@@ -8,7 +8,7 @@ use serenity::model::gateway::Ready;
 use serenity::model::prelude::{Guild, Member, PartialGuild, Role, RoleId};
 use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
-use sqlx::{Executor, PgPool};
+use sqlx::{Column, Executor, PgPool, Row, TypeInfo, ValueRef};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLockWriteGuard;
@@ -20,6 +20,7 @@ pub(crate) mod immut_data;
 mod roles;
 pub(crate) mod util;
 
+use crate::immut_data::dynamic::WHITESPACE;
 use crate::util::say_wo_unintended_mentions;
 use app_cache::AppCache;
 use immut_data::consts::{
@@ -40,8 +41,14 @@ impl TypeMapKey for AppCacheKey {
     type Value = AppCache;
 }
 
+struct PgPoolKey;
+
+impl TypeMapKey for PgPoolKey {
+    type Value = PgPool;
+}
+
 #[group]
-#[commands(ping, role_ids, quit)]
+#[commands(ping, role_ids, sql, quit)]
 struct General;
 
 struct Bot {
@@ -93,11 +100,10 @@ impl EventHandler for Bot {
 
         Self::print_server_members(&guild, &members);
 
-        let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
-
         let app_cache = AppCache::new(&self.pool, members).await;
-
+        let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
         wlock.insert::<AppCacheKey>(app_cache);
+        wlock.insert::<PgPoolKey>(self.pool.clone());
 
         println!("{} is at your service! 🌸", ready.user.name);
     }
@@ -134,7 +140,7 @@ impl EventHandler for Bot {
 async fn serenity(
     #[shuttle_shared_db::Postgres] pool: PgPool,
 ) -> shuttle_serenity::ShuttleSerenity {
-    pool.execute(include_str!("../schema.sql"))
+    pool.execute(include_str!("../schema.pgsql"))
         .await
         .expect("Failed to initialize database");
 
@@ -198,6 +204,71 @@ async fn role_ids(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[owners_only]
+async fn sql(ctx: &Context, msg: &Message) -> CommandResult {
+    let data = ctx.data.read().await;
+    let query = {
+        let q = msg
+            .content
+            .trim_start_matches(DISCORD_PREFIX)
+            .trim_start_matches("sql ");
+        WHITESPACE.replace_all(q, " ")
+    };
+    println!("Executing query: \"{query}\"");
+    let pool: &PgPool = data
+        .get::<PgPoolKey>()
+        .expect("Failed to get the database pool from the typemap");
+    // Result of the query is a vector of rows
+    let res: Vec<sqlx::postgres::PgRow> = sqlx::query(&query).fetch_all(pool).await?;
+    let mut simplified = Vec::<HashMap<String, String>>::with_capacity(res.len());
+    for row in res {
+        let columns = row.columns();
+        let mut hm = HashMap::<String, String>::with_capacity(columns.len());
+        for col in row.columns() {
+            let value = row.try_get_raw(col.ordinal()).unwrap();
+            let value = match value.format() {
+                sqlx::postgres::PgValueFormat::Binary => {
+                    let type_info = value.type_info();
+                    let type_name = type_info.name();
+                    let slice = value.as_bytes().unwrap();
+                    if type_name == "INT8" {
+                        let value = i64::from_be_bytes(slice.try_into().unwrap());
+                        format!("{}: (INT8)", value)
+                    } else if type_name == "BOOL" {
+                        let value: bool = slice[0] == 1;
+                        format!("{value:?}: (BOOL)")
+                    } else {
+                        format!("{slice:?}: ({type_name})")
+                    }
+                }
+                sqlx::postgres::PgValueFormat::Text => {
+                    format!("{}", value.as_str().unwrap())
+                }
+            };
+            hm.insert(col.name().to_string(), value);
+        }
+        simplified.push(hm);
+    }
+
+    let response = {
+        let db_response = serde_json::to_string_pretty(&simplified)?;
+        let mut msg_builder = MessageBuilder::new();
+        msg_builder
+            .mention(&msg.author)
+            .push("\n\n")
+            .push("Result:\n")
+            .push("```json\n")
+            .push(&db_response)
+            .push("```");
+        msg_builder.build()
+    };
+
+    msg.reply(&ctx.http, &response).await?;
+
+    Ok(())
+}
+
+#[command]
+#[owners_only]
 async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
 
@@ -205,6 +276,7 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
         msg.reply(ctx, "Shutting down!").await?;
         let mut wlock = sm.lock().await;
         wlock.shutdown_all().await;
+        // TODO: This doesn't work withouth the following line. Why?
         std::process::exit(0);
     } else {
         msg.reply(ctx, "There was a problem getting the shard manager")
