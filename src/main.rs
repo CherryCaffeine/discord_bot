@@ -10,14 +10,14 @@ use std::sync::Arc;
 use tokio::sync::RwLockWriteGuard;
 use ux::u63;
 
-mod app_cache;
+mod app_state;
 mod commands;
 mod db;
 pub(crate) mod immut_data;
 mod roles;
 pub(crate) mod util;
 
-use app_cache::AppCache;
+use app_state::AppState;
 use commands::{GENERAL_GROUP, MY_HELP};
 use immut_data::consts::{
     DISCORD_INTENTS, DISCORD_PREFIX, DISCORD_SERVER_ID, DISCORD_TOKEN, EXP_PER_MSG,
@@ -33,7 +33,7 @@ impl TypeMapKey for ShardManagerKey {
 struct AppCacheKey;
 
 impl TypeMapKey for AppCacheKey {
-    type Value = AppCache;
+    type Value = AppState;
 }
 
 struct PgPoolKey;
@@ -92,10 +92,12 @@ impl EventHandler for Bot {
 
         Self::print_server_members(&guild, &members);
 
-        let app_cache = AppCache::new(&self.pool, members).await;
-        let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
-        wlock.insert::<AppCacheKey>(app_cache);
-        wlock.insert::<PgPoolKey>(self.pool.clone());
+        let app_cache = AppState::new(&self.pool, members).await;
+        {
+            let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
+            wlock.insert::<AppCacheKey>(app_cache);
+            wlock.insert::<PgPoolKey>(self.pool.clone());
+        }
 
         println!("{} is at your service! 🌸", ready.user.name);
     }
@@ -108,14 +110,15 @@ impl EventHandler for Bot {
             return;
         }
         println!("{}: {}", msg.author.name, msg.content);
-        let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
-        let app_cache: &mut AppCache = wlock
-            .get_mut::<AppCacheKey>()
-            .expect("Failed to get the app cache from the typemap");
 
-        let res: Result<u63, sqlx::Error> =
-            app_cache::sync::add_signed_exp(app_cache, &self.pool, &msg.author.id, EXP_PER_MSG)
-                .await;
+        let res: Result<u63, sqlx::Error> = {
+            let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
+            let app_cache: &mut AppState = wlock
+                .get_mut::<AppCacheKey>()
+                .expect("Failed to get the app cache from the typemap");
+            app_state::sync::add_signed_exp(app_cache, &self.pool, &msg.author.id, EXP_PER_MSG)
+                .await
+        };
 
         match res {
             Ok(exp) => {

@@ -12,7 +12,7 @@ pub(crate) mod sync;
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct AppCache {
+pub struct AppState {
     users: Vec<ServerMember>,
 }
 
@@ -40,7 +40,7 @@ impl From<dao::ServerMember> for ServerMember {
     }
 }
 
-impl AppCache {
+impl AppState {
     pub(crate) async fn new(pool: &PgPool, fetched_members: Vec<Member>) -> Self {
         let db_members = db::server_members(pool).await.unwrap_or_else(|e| {
             panic!("Sqlx failure when querying the list of server members: {e}");
@@ -54,6 +54,6 @@ impl AppCache {
             .map(ServerMember::from)
             .collect();
 
-        AppCache { users }
+        AppState { users }
     }
 }

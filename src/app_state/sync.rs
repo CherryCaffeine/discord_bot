@@ -8,13 +8,13 @@ use ux::u63;
 
 use crate::db;
 
-use super::AppCache;
+use super::AppState;
 
 /// "Synchronized" way of adding experience points to a user.
 ///
 /// "Synchronized" means that it updates both the database and the cache.
 pub(crate) async fn add_signed_exp(
-    app_cache: &mut AppCache,
+    app_cache: &mut AppState,
     pool: &PgPool,
     discord_id: impl AsRef<UserId>,
     delta: i64,
