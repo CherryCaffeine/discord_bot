@@ -1,12 +1,10 @@
 use serenity::async_trait;
-use serenity::client::bridge::gateway::ShardManager;
 use serenity::framework::StandardFramework;
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
 use serenity::model::prelude::{Guild, Member, PartialGuild};
 use serenity::prelude::*;
 use sqlx::{Executor, PgPool};
-use std::sync::Arc;
 use tokio::sync::RwLockWriteGuard;
 use ux::u63;
 
@@ -17,30 +15,13 @@ pub(crate) mod immut_data;
 mod roles;
 pub(crate) mod util;
 
+use app_state::type_map_keys::{AppStateKey, PgPoolKey, ShardManagerKey};
 use app_state::AppState;
 use commands::{GENERAL_GROUP, MY_HELP};
 use immut_data::consts::{
     DISCORD_INTENTS, DISCORD_PREFIX, DISCORD_SERVER_ID, DISCORD_TOKEN, EXP_PER_MSG,
 };
 use util::members;
-
-struct ShardManagerKey;
-
-impl TypeMapKey for ShardManagerKey {
-    type Value = Arc<Mutex<ShardManager>>;
-}
-
-struct AppCacheKey;
-
-impl TypeMapKey for AppCacheKey {
-    type Value = AppState;
-}
-
-struct PgPoolKey;
-
-impl TypeMapKey for PgPoolKey {
-    type Value = PgPool;
-}
 
 struct Bot {
     pool: PgPool,
@@ -95,7 +76,7 @@ impl EventHandler for Bot {
         let app_cache = AppState::new(&self.pool, members).await;
         {
             let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
-            wlock.insert::<AppCacheKey>(app_cache);
+            wlock.insert::<AppStateKey>(app_cache);
             wlock.insert::<PgPoolKey>(self.pool.clone());
         }
 
@@ -114,7 +95,7 @@ impl EventHandler for Bot {
         let res: Result<u63, sqlx::Error> = {
             let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
             let app_cache: &mut AppState = wlock
-                .get_mut::<AppCacheKey>()
+                .get_mut::<AppStateKey>()
                 .expect("Failed to get the app cache from the typemap");
             app_state::sync::add_signed_exp(app_cache, &self.pool, &msg.author.id, EXP_PER_MSG)
                 .await

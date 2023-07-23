@@ -9,6 +9,7 @@ use crate::db::{self, dao};
 mod in_cache;
 mod membership;
 pub(crate) mod sync;
+pub(crate) mod type_map_keys;
 
 #[allow(dead_code)]
 #[derive(Debug)]

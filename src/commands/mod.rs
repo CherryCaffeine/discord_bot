@@ -13,12 +13,12 @@ use serenity::{
 use sqlx::{Column, PgPool, Row, TypeInfo, ValueRef};
 
 use crate::{
+    app_state::type_map_keys::{PgPoolKey, ShardManagerKey},
     immut_data::{
         consts::{DISCORD_BOT_CHANNEL, DISCORD_PREFIX, DISCORD_SERVER_ID},
         dynamic::WHITESPACE,
     },
     util::say_wo_unintended_mentions,
-    PgPoolKey, ShardManagerKey,
 };
 
 #[group]
