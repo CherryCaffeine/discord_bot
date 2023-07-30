@@ -6,15 +6,18 @@ use ux::u63;
 
 use crate::db::{self, dao};
 
+use self::reqd_prompts::ReqdPrompts;
+
 mod in_cache;
 mod membership;
+mod reqd_prompts;
 pub(crate) mod sync;
 pub(crate) mod type_map_keys;
 
 #[allow(dead_code)]
-#[derive(Debug)]
-pub struct AppState {
-    users: Vec<ServerMember>,
+pub(crate) struct AppState {
+    pub(crate) users: Vec<ServerMember>,
+    pub(crate) reqd_prompts: ReqdPrompts,
 }
 
 /// For database operations, [`ServerMember`] is converted to [`crate::db::dao::ServerMember`].
@@ -54,7 +57,11 @@ impl AppState {
             .into_iter()
             .map(ServerMember::from)
             .collect();
+        let reqd_prompts = ReqdPrompts::default();
 
-        AppState { users }
+        AppState {
+            users,
+            reqd_prompts,
+        }
     }
 }

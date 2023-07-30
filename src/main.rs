@@ -17,6 +17,7 @@ pub(crate) mod util;
 
 use app_state::type_map_keys::{AppStateKey, PgPoolKey, ShardManagerKey};
 use app_state::AppState;
+use commands::Progress;
 use commands::{GENERAL_GROUP, MY_HELP};
 use immut_data::consts::{
     DISCORD_INTENTS, DISCORD_PREFIX, DISCORD_SERVER_ID, DISCORD_TOKEN, EXP_PER_MSG,
@@ -84,6 +85,25 @@ impl EventHandler for Bot {
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
+        let mut wlock = ctx.data.write().await;
+        let app_cache: &mut AppState = wlock
+            .get_mut::<AppStateKey>()
+            .expect("Failed to get the app cache from the typemap");
+        if let Some((i, req)) = app_cache
+            .reqd_prompts
+            .earned_role
+            .iter_mut()
+            .enumerate()
+            .find(|(_i, req)| req.discord_id == msg.author.id)
+        {
+            match req.progress.advance(self, &ctx, &msg).await.unwrap() {
+                Some(_req) => (),
+                None => {
+                    app_cache.reqd_prompts.earned_role.remove(i);
+                }
+            };
+            return;
+        }
         if msg.content.starts_with(DISCORD_PREFIX) {
             return;
         }

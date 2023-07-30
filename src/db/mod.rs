@@ -72,3 +72,21 @@ pub(crate) async fn add_newcomers(pool: &PgPool, newcomers: &[i64]) -> Result<()
     query_builder.execute(pool).await?;
     Ok(())
 }
+
+pub(crate) async fn add_earned_role(
+    pool: &PgPool,
+    role_id: i64,
+    exp_needed: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO exp_based_roles (role_id, exp_needed) \
+    VALUES ($1, $2) \
+    ON CONFLICT (role_id) \
+    DO UPDATE SET exp_needed = $2",
+    )
+    .bind(role_id)
+    .bind(exp_needed)
+    .execute(pool)
+    .await?;
+    Ok(())
+}

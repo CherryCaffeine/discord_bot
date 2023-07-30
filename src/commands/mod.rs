@@ -1,17 +1,18 @@
 use std::collections::HashSet;
 
 use serenity::{
+    async_trait,
     framework::standard::{
         help_commands,
         macros::{group, help},
-        Args, CommandGroup, CommandResult, HelpOptions,
+        Args, CommandError, CommandGroup, CommandResult, HelpOptions,
     },
     model::prelude::{Message, UserId},
     prelude::Context,
 };
 
 mod ping;
-mod role;
+pub(crate) mod role;
 mod sql;
 mod stop;
 
@@ -20,9 +21,21 @@ use role::ROLE_COMMAND;
 use sql::SQL_COMMAND;
 use stop::STOP_COMMAND;
 
+use crate::Bot;
+
 #[group]
 #[commands(ping, role, sql, stop)]
 struct General;
+
+#[async_trait]
+pub(crate) trait Progress: Sized {
+    async fn advance(
+        &mut self,
+        bot: &Bot,
+        ctx: &Context,
+        msg: &Message,
+    ) -> Result<Option<&mut Self>, CommandError>;
+}
 
 // The framework provides two built-in help commands for you to use.
 // But you can also make your own customized help command that forwards
