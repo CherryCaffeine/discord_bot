@@ -1,4 +1,3 @@
-use core::convert::identity as id;
 use std::collections::HashMap;
 
 use serenity::{
@@ -8,10 +7,10 @@ use serenity::{
     prelude::Context,
     utils::MessageBuilder,
 };
+use ux::u63;
 
 use crate::{
-    app_state::{type_map_keys::AppStateKey, AppState},
-    db::add_earned_role,
+    app_state::{self, type_map_keys::AppStateKey, AppState},
     immut_data::consts::{DISCORD_BOT_CHANNEL, DISCORD_PREFIX, DISCORD_SERVER_ID},
     util::say_wo_unintended_mentions,
     Bot,
@@ -63,14 +62,13 @@ impl Progress for EarnedRolePromptProgress {
                 let role = DISCORD_SERVER_ID
                     .create_role(&ctx.http, |r| r.name(&name))
                     .await?;
-                let exp_needed: i64 = match msg.content.parse() {
-                    Ok(exp_needed) => id::<u64>(exp_needed) as i64,
+                let exp_needed: u63 = match msg.content.parse::<u64>() {
+                    Ok(exp_needed) => u63::new(exp_needed),
                     Err(_) => {
                         return Err(CommandError::from("Failed to parse the exp_needed value"))
                     }
                 };
-                let role_id = id::<u64>(role.id.0) as i64;
-                add_earned_role(&bot.pool, role_id, exp_needed).await?;
+                app_state::sync::add_earned_role(ctx, &bot.pool, role.id, exp_needed).await?;
                 msg_builder.push(&format!("The earned role {name} has been added."));
                 None
             }

@@ -117,8 +117,8 @@ impl EventHandler for Bot {
             let app_cache: &mut AppState = wlock
                 .get_mut::<AppStateKey>()
                 .expect("Failed to get the app cache from the typemap");
-            app_state::sync::add_signed_exp(app_cache, &self.pool, &msg.author.id, EXP_PER_MSG)
-                .await
+            let author: Member = msg.member(&ctx).await.unwrap();
+            app_state::sync::add_signed_exp(app_cache, &self.pool, &author, EXP_PER_MSG).await
         };
 
         match res {

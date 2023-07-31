@@ -12,8 +12,13 @@ pub(crate) struct User {
 
 /// Data Access Object for [`crate::app_cache::ServerMember`].
 #[derive(FromRow, Debug)]
-#[allow(dead_code)]
 pub(crate) struct ServerMember {
     pub(crate) discord_id: i64,
     pub(crate) exp: i64,
+}
+
+#[derive(FromRow)]
+pub(crate) struct EarnedRole {
+    pub(crate) role_id: i64,
+    pub(crate) exp_needed: i64,
 }

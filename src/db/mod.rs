@@ -90,3 +90,14 @@ pub(crate) async fn add_earned_role(
     .await?;
     Ok(())
 }
+
+pub(crate) async fn sorted_earned_roles(
+    pool: &PgPool,
+) -> Result<Vec<dao::EarnedRole>, sqlx::Error> {
+    sqlx::query_as::<_, dao::EarnedRole>(
+        "SELECT role_id, exp_needed FROM exp_based_roles\
+        ORDER BY exp_needed ASC",
+    )
+    .fetch_all(pool)
+    .await
+}
