@@ -1,6 +1,6 @@
 use std::convert::identity as id;
 
-use serenity::model::prelude::{Member, RoleId};
+use serenity::model::prelude::{Member, RoleId, UserId};
 use sqlx::PgPool;
 use ux::u63;
 
@@ -25,7 +25,7 @@ pub(crate) struct AppState {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub(crate) struct ServerMember {
-    discord_id: u63,
+    discord_id: UserId,
     exp: u63,
 }
 
@@ -44,7 +44,7 @@ impl From<dao::ServerMember> for ServerMember {
         let exp: u64 = id::<i64>(exp) as u64;
 
         ServerMember {
-            discord_id: u63::new(discord_id),
+            discord_id: UserId(discord_id),
             exp: u63::new(exp),
         }
     }

@@ -1,8 +1,13 @@
 use super::AppState;
 use core::convert::identity as id;
+use serenity::model::prelude::UserId;
 use ux::u63;
 
-pub(super) fn add_signed_exp(app_cache: &mut AppState, discord_id: u63, delta: i64) -> Option<u63> {
+pub(super) fn add_signed_exp(
+    app_cache: &mut AppState,
+    discord_id: UserId,
+    delta: i64,
+) -> Option<u63> {
     let server_member = app_cache
         .users
         .iter_mut()

@@ -1,7 +1,6 @@
 use std::convert::identity as id;
 
 use super::{in_cache, type_map_keys::AppStateKey, EarnedRole};
-use crate::util::macros::u63_from_as_ref_user_id;
 use serenity::{
     model::prelude::{Member, RoleId, UserId},
     prelude::Context,
@@ -26,7 +25,6 @@ pub(crate) async fn add_signed_exp(
     let db_exp: i64 = db::add_signed_exp(pool, discord_id, delta).await?;
     #[allow(clippy::cast_sign_loss)]
     let db_exp: u63 = u63::new(id::<i64>(db_exp) as u64);
-    let discord_id = u63_from_as_ref_user_id!(discord_id);
     let in_cache_exp = if let Some(exp) = in_cache::add_signed_exp(app_cache, discord_id, delta) {
         exp
     } else {
