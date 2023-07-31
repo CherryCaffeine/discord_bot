@@ -1,5 +1,5 @@
 use crate::util::macros::i64_from_as_ref_user_id;
-use serenity::model::prelude::UserId;
+use serenity::model::prelude::{RoleId, UserId};
 use sqlx::PgPool;
 
 pub(crate) mod dao;
@@ -75,9 +75,10 @@ pub(crate) async fn add_newcomers(pool: &PgPool, newcomers: &[i64]) -> Result<()
 
 pub(crate) async fn add_earned_role(
     pool: &PgPool,
-    role_id: i64,
+    role_id: RoleId,
     exp_needed: i64,
 ) -> Result<(), sqlx::Error> {
+    let role_id = i64::from(role_id);
     sqlx::query(
         "INSERT INTO exp_based_roles (role_id, exp_needed) \
     VALUES ($1, $2) \

@@ -51,7 +51,6 @@ pub(crate) async fn add_earned_role(
     exp_needed: u63,
 ) -> Result<(), sqlx::Error> {
     {
-        let role_id = id::<u64>(role_id.0) as i64;
         let exp_needed = u64::from(exp_needed) as i64;
         db::add_earned_role(pool, role_id, exp_needed).await?;
     }
