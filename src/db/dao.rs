@@ -10,8 +10,9 @@ pub(crate) struct User {
     on_server: bool,
 }
 
-/// Data Access Object for [`crate::app_cache::ServerMember`].
-#[derive(FromRow, Debug)]
+/// Data Access Object for [`crate::app_state::ServerMember`].
+// The struct is Copy coincidentally, but it's not a requirement.
+#[derive(FromRow, Debug, Clone, Copy)]
 pub(crate) struct ServerMember {
     pub(crate) discord_id: i64,
     pub(crate) exp: i64,

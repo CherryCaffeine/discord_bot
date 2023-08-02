@@ -6,11 +6,11 @@ use serenity::model::prelude::{Guild, Member, PartialGuild};
 use serenity::prelude::*;
 use sqlx::{Executor, PgPool};
 use tokio::sync::RwLockWriteGuard;
-use ux::u63;
 
 mod app_state;
 mod commands;
 mod db;
+pub(crate) mod error;
 pub(crate) mod immut_data;
 mod roles;
 pub(crate) mod util;
@@ -23,6 +23,8 @@ use immut_data::consts::{
     DISCORD_INTENTS, DISCORD_PREFIX, DISCORD_SERVER_ID, DISCORD_TOKEN, EXP_PER_MSG,
 };
 use util::members;
+
+use crate::app_state::exp::Exp;
 
 struct Bot {
     pool: PgPool,
@@ -74,10 +76,10 @@ impl EventHandler for Bot {
 
         Self::print_server_members(&guild, &members);
 
-        let app_cache = AppState::new(&self.pool, members).await;
+        let app_state = AppState::new(&self.pool, members).await;
         {
             let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
-            wlock.insert::<AppStateKey>(app_cache);
+            wlock.insert::<AppStateKey>(app_state);
             wlock.insert::<PgPoolKey>(self.pool.clone());
         }
 
@@ -86,24 +88,34 @@ impl EventHandler for Bot {
 
     async fn message(&self, ctx: Context, msg: Message) {
         let mut wlock = ctx.data.write().await;
-        let app_cache: &mut AppState = wlock
+        let app_state: &mut AppState = wlock
             .get_mut::<AppStateKey>()
             .expect("Failed to get the app cache from the typemap");
-        if let Some((i, req)) = app_cache
-            .reqd_prompts
+        let AppState {
+            users,
+            reqd_prompts,
+            sorted_earned_roles,
+        } = app_state;
+        if let Some((i, req)) = reqd_prompts
             .earned_role
             .iter_mut()
             .enumerate()
             .find(|(_i, req)| req.discord_id == msg.author.id)
         {
-            match req.progress.advance(self, &ctx, &msg).await.unwrap() {
+            match req
+                .progress
+                .advance(self, &ctx.http, sorted_earned_roles, users, &msg)
+                .await
+                .unwrap()
+            {
                 Some(_req) => (),
                 None => {
-                    app_cache.reqd_prompts.earned_role.remove(i);
+                    app_state.reqd_prompts.earned_role.remove(i);
                 }
             };
             return;
         }
+        // we retain wlock because the checks are quick
         if msg.content.starts_with(DISCORD_PREFIX) {
             return;
         }
@@ -112,18 +124,15 @@ impl EventHandler for Bot {
         }
         println!("{}: {}", msg.author.name, msg.content);
 
-        let res: Result<u63, sqlx::Error> = {
-            let mut wlock: RwLockWriteGuard<TypeMap> = ctx.data.write().await;
-            let app_cache: &mut AppState = wlock
-                .get_mut::<AppStateKey>()
-                .expect("Failed to get the app cache from the typemap");
+        let res: error::Result<Exp> = {
             let author: Member = msg.member(&ctx).await.unwrap();
-            app_state::sync::add_signed_exp(app_cache, &self.pool, &author, EXP_PER_MSG).await
+            app_state::sync::add_signed_exp(&ctx.http, app_state, &self.pool, &author, EXP_PER_MSG)
+                .await
         };
 
         match res {
             Ok(exp) => {
-                println!("{}'s exp: {exp}", msg.author.name);
+                println!("{}'s exp: {exp:?}", msg.author.name);
             }
             Err(e) => {
                 eprintln!("Sqlx error during adjusting experience: {e}");

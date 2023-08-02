@@ -1,19 +1,18 @@
 use std::collections::HashMap;
 
-use serenity::{
-    async_trait,
-    framework::standard::{macros::command, CommandError, CommandResult},
-    model::prelude::{Message, Role, RoleId, UserId},
-    prelude::Context,
-    utils::MessageBuilder,
-};
-use ux::u63;
-
 use crate::{
-    app_state::{self, type_map_keys::AppStateKey, AppState},
+    app_state::{self, exp::Exp, type_map_keys::AppStateKey, AppState},
     immut_data::consts::{DISCORD_BOT_CHANNEL, DISCORD_PREFIX, DISCORD_SERVER_ID},
     util::say_wo_unintended_mentions,
     Bot,
+};
+use serenity::{
+    async_trait,
+    framework::standard::{macros::command, CommandError, CommandResult},
+    http::Http,
+    model::prelude::{Message, Role, RoleId, UserId},
+    prelude::Context,
+    utils::MessageBuilder,
 };
 
 use super::Progress;
@@ -29,7 +28,9 @@ impl Progress for EarnedRolePromptProgress {
     async fn advance(
         &mut self,
         bot: &Bot,
-        ctx: &Context,
+        http: &Http,
+        sorted_earned_roles: &mut Vec<app_state::EarnedRole>,
+        users: &mut Vec<app_state::ServerMember>,
         msg: &Message,
     ) -> Result<Option<&mut Self>, CommandError> {
         let mut msg_builder = MessageBuilder::new();
@@ -39,9 +40,7 @@ impl Progress for EarnedRolePromptProgress {
         if msg.channel_id != DISCORD_BOT_CHANNEL {
             msg_builder.push("You have one or more pending prompts for adding an earned role. ");
             msg_builder.push("Please complete them in the bot channel.");
-            DISCORD_BOT_CHANNEL
-                .say(&ctx.http, &msg_builder.build())
-                .await?;
+            DISCORD_BOT_CHANNEL.say(http, &msg_builder.build()).await?;
             return Ok(Some(self));
         };
 
@@ -60,22 +59,29 @@ impl Progress for EarnedRolePromptProgress {
             }
             Self::CollectedName(name) => {
                 let role = DISCORD_SERVER_ID
-                    .create_role(&ctx.http, |r| r.name(&name))
+                    .create_role(http, |r| r.name(&name))
                     .await?;
-                let exp_needed: u63 = match msg.content.parse::<u64>() {
-                    Ok(exp_needed) => u63::new(exp_needed),
+                // TODO: in case of error, repeat the prompt
+                let exp_needed: Exp = match msg.content.parse::<u64>() {
+                    Ok(exp_needed) => Exp(exp_needed),
                     Err(_) => {
                         return Err(CommandError::from("Failed to parse the exp_needed value"))
                     }
                 };
-                app_state::sync::add_earned_role(ctx, &bot.pool, role.id, exp_needed).await?;
+                app_state::sync::add_earned_role(
+                    http,
+                    sorted_earned_roles,
+                    users,
+                    &bot.pool,
+                    role.id,
+                    exp_needed,
+                )
+                .await?;
                 msg_builder.push(&format!("The earned role {name} has been added."));
                 None
             }
         };
-        DISCORD_BOT_CHANNEL
-            .say(&ctx.http, &msg_builder.build())
-            .await?;
+        DISCORD_BOT_CHANNEL.say(http, &msg_builder.build()).await?;
         Ok(ret)
     }
 }
@@ -124,7 +130,7 @@ async fn role(ctx: &Context, msg: &Message) -> CommandResult {
                 return Ok(());
             };
         }
-        let actual_sub = actual_sub.replace("`", "");
+        let actual_sub = actual_sub.replace('`', "");
         msg_builder.push(&format!("Unknown subcommand `{actual_sub}`"));
     } else {
         msg_builder.push("Try one of the following subcommands:\n");
@@ -191,7 +197,7 @@ async fn add(ctx: &Context, msg: &Message) -> CommandResult {
             .content
             .trim_start_matches(DISCORD_PREFIX)
             .trim_start_matches("role")
-            .trim_start_matches(" ")
+            .trim_start_matches(' ')
             .trim_start_matches("add")
             .split_ascii_whitespace();
         split_suffix.next()
@@ -202,7 +208,7 @@ async fn add(ctx: &Context, msg: &Message) -> CommandResult {
                 return Ok(());
             };
         }
-        let actual_sub = actual_sub.replace("`", "");
+        let actual_sub = actual_sub.replace('`', "");
         msg_builder.push(&format!("Unknown subcommand `{actual_sub}`"));
     } else {
         msg_builder.push("Try one of the following subcommands:\n");

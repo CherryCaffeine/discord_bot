@@ -1,73 +1,170 @@
-use std::convert::identity as id;
-
-use super::{in_cache, type_map_keys::AppStateKey, EarnedRole};
+use super::{exp::Exp, in_cache, EarnedRole, ServerMember};
 use serenity::{
+    http::Http,
     model::prelude::{Member, RoleId, UserId},
-    prelude::Context,
 };
 use sqlx::PgPool;
-use ux::u63;
-
-use crate::db;
 
 use super::AppState;
+use crate::error;
+use crate::{db, immut_data::consts::DISCORD_SERVER_ID};
 
 /// "Synchronized" way of adding experience points to a user.
 ///
 /// "Synchronized" means that it updates both the database and the cache.
 pub(crate) async fn add_signed_exp(
-    app_cache: &mut AppState,
+    http: &Http,
+    app_state: &mut AppState,
     pool: &PgPool,
     member: &Member,
     delta: i64,
-) -> Result<u63, sqlx::Error> {
+) -> error::Result<Exp> {
     let discord_id: UserId = member.user.id;
-    let db_exp: i64 = db::add_signed_exp(pool, discord_id, delta).await?;
-    #[allow(clippy::cast_sign_loss)]
-    let db_exp: u63 = u63::new(id::<i64>(db_exp) as u64);
-    let in_cache_exp = if let Some(exp) = in_cache::add_signed_exp(app_cache, discord_id, delta) {
+    let db_exp: Exp = db::add_signed_exp(pool, discord_id, delta).await?;
+    let in_cache_exp = if let Some(exp) = in_cache::add_signed_exp(app_state, discord_id, delta) {
         exp
     } else {
         eprintln!("Couldn't find the user in the cache");
-        #[allow(clippy::cast_sign_loss)]
-        u63::new(id::<i64>(delta) as u64)
+        Exp::from_i64(delta)
     };
 
     if db_exp != in_cache_exp {
         eprintln!("The database and the cache are out of sync");
-        eprintln!("db_exp: {db_exp}");
-        eprintln!("in_cache_exp: {in_cache_exp}");
+        eprintln!("db_exp: {db_exp:?}");
+        eprintln!("in_cache_exp: {in_cache_exp:?}");
     }
 
-    // TODO: find a way to grant roles efficiently.
+    let Some(user) = app_state
+        .users
+        .iter_mut()
+        .find(|server_member| server_member.discord_id == discord_id)
+    else {
+        panic!("Couldn't find the user in the cache");
+    };
+
+    let Some(exp_milestone) = user.nxt_exp_milestone else {
+        return Ok(db_exp);
+    };
+
+    if user.exp >= exp_milestone {
+        let next_earned_role_idx = match user.earned_role_idx {
+            Some(idx) => {
+                let old_role = match app_state.sorted_earned_roles.get(idx) {
+                    Some(r) => r.role_id,
+                    None => unreachable!("The user has an invalid earned_role_idx"),
+                };
+                http.remove_member_role(DISCORD_SERVER_ID.0, user.discord_id.0, old_role.0, None)
+                    .await?;
+                idx + 1
+            }
+            None => 0,
+        };
+        let next_earned_role_id = match app_state.sorted_earned_roles.get(next_earned_role_idx) {
+            Some(r) => r.role_id,
+            None => unreachable!("The user has an invalid earned_role_idx"),
+        };
+        user.earned_role_idx = Some(next_earned_role_idx);
+        user.nxt_exp_milestone = app_state
+            .sorted_earned_roles
+            .get(next_earned_role_idx)
+            .map(|r| r.exp_needed);
+        http.add_member_role(
+            DISCORD_SERVER_ID.0,
+            user.discord_id.0,
+            next_earned_role_id.0,
+            None,
+        )
+        .await?;
+    }
 
     Ok(db_exp)
 }
 
 pub(crate) async fn add_earned_role(
-    ctx: &Context,
+    http: &Http,
+    sorted_earned_roles: &mut Vec<EarnedRole>,
+    users: &mut [ServerMember],
     pool: &PgPool,
     role_id: RoleId,
-    exp_needed: u63,
-) -> Result<(), sqlx::Error> {
-    {
-        let exp_needed = u64::from(exp_needed) as i64;
-        db::add_earned_role(pool, role_id, exp_needed).await?;
-    }
-    let mut wlock = ctx.data.write().await;
-    let app_state = wlock
-        .get_mut::<AppStateKey>()
-        .expect("Failed to get the app cache from the typemap");
-    let pos = app_state
-        .sorted_earned_roles
+    exp_needed: Exp,
+) -> error::Result<()> {
+    db::add_earned_role(pool, role_id, exp_needed).await?;
+    let pos = sorted_earned_roles
         .binary_search_by_key(&exp_needed, |r| r.exp_needed)
         .expect_err("The role with the same exp_needed already exists");
-    app_state.sorted_earned_roles.insert(
+    sorted_earned_roles.insert(
         pos,
         EarnedRole {
             role_id,
             exp_needed,
         },
     );
+    let sm_iter = users.iter_mut();
+    if sorted_earned_roles.len() == 1 {
+        for sm in sm_iter {
+            if sm.exp > exp_needed {
+                sm.earned_role_idx = Some(0);
+                sm.nxt_exp_milestone = None;
+                http.add_member_role(DISCORD_SERVER_ID.0, sm.discord_id.0, role_id.0, None)
+                    .await?;
+            } else {
+                sm.earned_role_idx = None;
+                sm.nxt_exp_milestone = Some(exp_needed);
+            }
+        }
+    } else if sorted_earned_roles.len() - 1 == pos {
+        let old_last_idx = pos - 1;
+        for sm in sm_iter {
+            let Some(old_earned_role_idx) = sm.earned_role_idx else {
+                continue;
+            };
+            if old_earned_role_idx != old_last_idx {
+                continue;
+            }
+            if sm.exp < exp_needed {
+                sm.nxt_exp_milestone = Some(exp_needed);
+            } else {
+                sm.earned_role_idx = Some(pos - 1);
+                sm.nxt_exp_milestone = None;
+                let old_role_id = match sorted_earned_roles.get(old_earned_role_idx) {
+                    Some(r) => r.role_id,
+                    None => unreachable!("The user has an invalid earned_role_idx"),
+                };
+                http.remove_member_role(DISCORD_SERVER_ID.0, sm.discord_id.0, old_role_id.0, None)
+                    .await?;
+                http.add_member_role(DISCORD_SERVER_ID.0, sm.discord_id.0, role_id.0, None)
+                    .await?;
+            }
+        }
+    } else {
+        for ServerMember {
+            ref discord_id,
+            earned_role_idx,
+            nxt_exp_milestone,
+            ref exp,
+            ..
+        } in sm_iter
+        {
+            match (earned_role_idx, nxt_exp_milestone) {
+                (Some(idx), _m) if *idx > pos => {
+                    *idx += 1;
+                    // the milestone should be the same
+                }
+                (Some(idx), m) if *idx == pos && *exp < exp_needed => {
+                    *m = Some(exp_needed);
+                }
+                (Some(idx), _m) if *idx == pos && *exp >= exp_needed => {
+                    let old_role: RoleId = sorted_earned_roles[*idx].role_id;
+                    *idx += 1;
+                    let new_role: RoleId = sorted_earned_roles[*idx].role_id;
+                    http.add_member_role(DISCORD_SERVER_ID.0, discord_id.0, new_role.0, None).await
+                        .unwrap_or_else(|e| panic!("Failed to give a role to a server member with discord_id={discord_id}: {e}"));
+                    http.remove_member_role(DISCORD_SERVER_ID.0, discord_id.0, old_role.0, None).await
+                        .unwrap_or_else(|e| panic!("Failed to remove a role from a server member with discord_id: {discord_id}: {e}"));
+                }
+                _ => (),
+            }
+        }
+    }
     Ok(())
 }

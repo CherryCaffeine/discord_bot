@@ -7,6 +7,7 @@ use serenity::{
         macros::{group, help},
         Args, CommandError, CommandGroup, CommandResult, HelpOptions,
     },
+    http::Http,
     model::prelude::{Message, UserId},
     prelude::Context,
 };
@@ -21,7 +22,10 @@ use role::ROLE_COMMAND;
 use sql::SQL_COMMAND;
 use stop::STOP_COMMAND;
 
-use crate::Bot;
+use crate::{
+    app_state::{EarnedRole, ServerMember},
+    Bot,
+};
 
 #[group]
 #[commands(ping, role, sql, stop)]
@@ -32,7 +36,9 @@ pub(crate) trait Progress: Sized {
     async fn advance(
         &mut self,
         bot: &Bot,
-        ctx: &Context,
+        http: &Http,
+        sorted_earned_roles: &mut Vec<EarnedRole>,
+        users: &mut Vec<ServerMember>,
         msg: &Message,
     ) -> Result<Option<&mut Self>, CommandError>;
 }

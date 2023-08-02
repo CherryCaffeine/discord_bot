@@ -1,4 +1,4 @@
-use crate::util::macros::i64_from_as_ref_user_id;
+use crate::{app_state::exp::Exp, util::macros::i64_from_as_ref_user_id};
 use serenity::model::prelude::{RoleId, UserId};
 use sqlx::PgPool;
 
@@ -8,9 +8,9 @@ pub(crate) async fn add_signed_exp(
     pool: &PgPool,
     discord_id: impl AsRef<UserId>,
     delta: i64,
-) -> Result<i64, sqlx::Error> {
+) -> Result<Exp, sqlx::Error> {
     let discord_id: i64 = i64_from_as_ref_user_id!(discord_id);
-    sqlx::query_scalar::<_, i64>(
+    sqlx::query_scalar(
         "INSERT INTO app_users (discord_id, exp) \
     VALUES ($1, $2) \
     ON CONFLICT (discord_id) \
@@ -21,6 +21,7 @@ pub(crate) async fn add_signed_exp(
     .bind(delta)
     .fetch_one(pool)
     .await
+    .map(Exp::from_i64)
 }
 
 /// Note that this function returns the active users based on the information
@@ -76,11 +77,12 @@ pub(crate) async fn add_newcomers(pool: &PgPool, newcomers: &[i64]) -> Result<()
 pub(crate) async fn add_earned_role(
     pool: &PgPool,
     role_id: RoleId,
-    exp_needed: i64,
+    exp_needed: Exp,
 ) -> Result<(), sqlx::Error> {
     let role_id = i64::from(role_id);
+    let exp_needed = exp_needed.to_i64();
     sqlx::query(
-        "INSERT INTO exp_based_roles (role_id, exp_needed) \
+        "INSERT INTO earned_roles (role_id, exp_needed) \
     VALUES ($1, $2) \
     ON CONFLICT (role_id) \
     DO UPDATE SET exp_needed = $2",
@@ -96,7 +98,7 @@ pub(crate) async fn sorted_earned_roles(
     pool: &PgPool,
 ) -> Result<Vec<dao::EarnedRole>, sqlx::Error> {
     sqlx::query_as::<_, dao::EarnedRole>(
-        "SELECT role_id, exp_needed FROM exp_based_roles\
+        "SELECT role_id, exp_needed FROM earned_roles \
         ORDER BY exp_needed ASC",
     )
     .fetch_all(pool)
