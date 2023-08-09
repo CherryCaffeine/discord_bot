@@ -104,3 +104,20 @@ pub(crate) async fn sorted_earned_roles(
     .fetch_all(pool)
     .await
 }
+
+pub(crate) async fn sorted_self_assigned_roles(
+    pool: &PgPool,
+) -> Result<Vec<dao::SelfAssignedRole>, sqlx::Error> {
+    sqlx::query_as::<_, dao::SelfAssignedRole>(
+        "SELECT \
+        excl_role_group_id, \
+        role_id, \
+        message_id, \
+        emoji_id, \
+        emoji_name 
+        FROM self_assigned_roles \
+        ORDER BY message_id ASC",
+    )
+    .fetch_all(pool)
+    .await
+}

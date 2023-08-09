@@ -12,7 +12,6 @@ mod commands;
 mod db;
 pub(crate) mod error;
 pub(crate) mod immut_data;
-mod roles;
 pub(crate) mod util;
 
 use app_state::type_map_keys::{AppStateKey, PgPoolKey, ShardManagerKey};
@@ -55,7 +54,7 @@ async fn build_client<H: EventHandler + 'static>(event_handler: H) -> Client {
 }
 
 impl Bot {
-    fn print_server_members(server: &PartialGuild, members: &Vec<Member>) {
+    fn print_server_members(server: &PartialGuild, members: &[Member]) {
         println!("Members of {} ({} total):", server.name, members.len());
 
         for m in members.iter() {
@@ -72,7 +71,7 @@ impl EventHandler for Bot {
         let members = members(&ctx.http).await;
 
         let guild: PartialGuild = Guild::get(&ctx.http, DISCORD_SERVER_ID).await
-            .expect("Encountered a Serenity error when getting partial guild information about the discord server");
+            .unwrap_or_else(|e| panic!("Encountered a Serenity error when getting partial guild information about the discord server: {e:?}"));
 
         Self::print_server_members(&guild, &members);
 
@@ -83,7 +82,8 @@ impl EventHandler for Bot {
             wlock.insert::<PgPoolKey>(self.pool.clone());
         }
 
-        println!("{} is at your service! 🌸", ready.user.name);
+        let bot_name: &str = &ready.user.name;
+        println!("{bot_name} is at your service! 🌸");
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
@@ -95,6 +95,7 @@ impl EventHandler for Bot {
             users,
             reqd_prompts,
             sorted_earned_roles,
+            self_role_msgs: _self_role_msgs,
         } = app_state;
         if let Some((i, req)) = reqd_prompts
             .earned_role
@@ -125,7 +126,9 @@ impl EventHandler for Bot {
         println!("{}: {}", msg.author.name, msg.content);
 
         let res: error::Result<Exp> = {
-            let author: Member = msg.member(&ctx).await.unwrap();
+            let author: Member = msg.member(&ctx).await.unwrap_or_else(|e| {
+                panic!("Failed to get member info for the message author: {e}")
+            });
             app_state::sync::add_signed_exp(&ctx.http, app_state, &self.pool, &author, EXP_PER_MSG)
                 .await
         };

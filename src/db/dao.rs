@@ -23,3 +23,12 @@ pub(crate) struct EarnedRole {
     pub(crate) role_id: i64,
     pub(crate) exp_needed: i64,
 }
+
+#[derive(FromRow)]
+pub(crate) struct SelfAssignedRole {
+    pub(crate) excl_role_group_id: i64,
+    pub(crate) role_id: i64,
+    pub(crate) message_id: i64,
+    pub(crate) emoji_id: Option<i64>,
+    pub(crate) emoji_name: Option<String>,
+}

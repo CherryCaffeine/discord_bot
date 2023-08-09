@@ -38,18 +38,34 @@ async fn sql(ctx: &Context, msg: &Message) -> CommandResult {
         for col in row.columns() {
             let value = row.try_get_raw(col.ordinal()).unwrap();
             let value = match value.format() {
-                sqlx::postgres::PgValueFormat::Binary => {
+                sqlx::postgres::PgValueFormat::Binary => 'output: {
                     let type_info = value.type_info();
                     let type_name = type_info.name();
-                    let slice = value.as_bytes().unwrap();
-                    if type_name == "INT8" {
-                        let value = i64::from_be_bytes(slice.try_into().unwrap());
-                        format!("{value}: (INT8)")
-                    } else if type_name == "BOOL" {
-                        let value: bool = slice[0] == 1;
-                        format!("{value:?}: (BOOL)")
-                    } else {
-                        format!("{slice:?}: ({type_name})")
+                    if value.is_null() {
+                        break 'output format!("NULL: ({type_name})");
+                    };
+                    let slice = match value.as_bytes() {
+                        Ok(slice) => slice,
+                        Err(e) => break 'output format!("{e:?}: ({type_name})"),
+                    };
+                    match type_name {
+                        "INT8" => {
+                            let value = i64::from_be_bytes(slice.try_into().unwrap());
+                            format!("{value}: (INT8)")
+                        }
+                        "BOOL" => {
+                            let value: bool = slice[0] == 1;
+                            format!("{value:?}: (BOOL)")
+                        }
+                        "TEXT" => {
+                            let value = std::str::from_utf8(slice);
+                            format!("{value:?}: (TEXT)")
+                        }
+                        "VARCHAR" => {
+                            let value = std::str::from_utf8(slice);
+                            format!("{value:?}: (VARCHAR)")
+                        }
+                        _ => format!("{slice:?}: ({type_name})"),
                     }
                 }
                 sqlx::postgres::PgValueFormat::Text => value.as_str().unwrap().to_string(),

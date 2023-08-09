@@ -11,6 +11,21 @@ CREATE TABLE IF NOT EXISTS earned_roles (
   PRIMARY KEY (role_id)
 );
 
-CREATE INDEX temp_index_exp_needed ON earned_roles (exp_needed);
-CLUSTER earned_roles USING temp_index_exp_needed;
-DROP INDEX temp_index_exp_needed;
+CREATE TABLE IF NOT EXISTS self_assigned_roles (
+  /* id of group of mutually exclusive roles */
+  excl_role_group_id bigint NOT NULL,
+  role_id bigint NOT NULL UNIQUE,
+  message_id bigint NOT NULL,
+  emoji_id bigint DEFAULT NULL,
+  emoji_name varchar(255) DEFAULT NULL,
+  /* CHECK ((emoji_id IS NOT NULL AND emoji_name is NULL) OR (emoji_id is NULL AND emoji_name IS NOT NULL)), */
+  PRIMARY KEY (role_id)
+);
+
+CREATE INDEX temp_idx_exp_needed ON earned_roles (exp_needed);
+CLUSTER earned_roles USING temp_idx_exp_needed;
+DROP INDEX temp_idx_exp_needed;
+
+CREATE INDEX temp_idx_message_id ON self_assigned_roles (message_id);
+CLUSTER self_assigned_roles USING temp_idx_message_id;
+DROP INDEX temp_idx_message_id;

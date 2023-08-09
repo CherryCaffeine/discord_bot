@@ -11,13 +11,17 @@ pub(crate) mod exp;
 mod in_cache;
 mod membership;
 mod reqd_prompts;
+mod roles;
 pub(crate) mod sync;
 pub(crate) mod type_map_keys;
+
+use roles::SelfRoleMsgs;
 
 pub(crate) struct AppState {
     pub(crate) users: Vec<ServerMember>,
     pub(crate) reqd_prompts: ReqdPrompts,
     pub(crate) sorted_earned_roles: Vec<EarnedRole>,
+    pub(crate) self_role_msgs: SelfRoleMsgs,
 }
 
 /// For database operations, [`ServerMember`] is converted to [`crate::db::dao::ServerMember`].
@@ -98,6 +102,13 @@ impl AppState {
             panic!("Sqlx failure when querying the list of server members: {e}");
         });
 
+        let self_role_msgs: SelfRoleMsgs = db::sorted_self_assigned_roles(pool)
+            .await
+            .unwrap_or_else(|e| {
+                panic!("Sqlx failure when querying the list of self-assigned roles: {e}");
+            })
+            .into();
+
         let sorted_earned_roles = db::sorted_earned_roles(pool)
             .await
             .unwrap_or_else(|e| {
@@ -120,6 +131,7 @@ impl AppState {
             users,
             reqd_prompts,
             sorted_earned_roles,
+            self_role_msgs,
         }
     }
 }
