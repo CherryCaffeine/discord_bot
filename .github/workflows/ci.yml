@@ -11,6 +11,13 @@ jobs:
           components: clippy
           toolchain: stable
       - name: Run check
+        env:
+          DISCORD_PREFIX: "~"
+          DISCORD_SERVER_ID: "1123378968607858769"
+          DISCORD_BOT_CHANNEL: "1127121133884428368"
+          DISCORD_SELF_ROLE_CHANNEL: "1126241784058613970"
+          # Fake discord token for testing
+          DISCORD_TOKEN: "Fake token"          
         run: cargo check
 on:
   push:
