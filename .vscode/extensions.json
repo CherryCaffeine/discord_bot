@@ -1,0 +1,12 @@
+{
+	"recommendations": [
+        "serayuzgur.crates",
+        "tamasfe.even-better-toml",
+        "github.vscode-github-actions",
+        "ZhangYue.rust-mod-generator",
+        "rust-lang.rust-analyzer",
+        "eamodio.gitlens",
+        "vadimcn.vscode-lldb",
+        "donjayamanne.githistory"
+	]
+}

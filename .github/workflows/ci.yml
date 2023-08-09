@@ -24,8 +24,16 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "src/**"
+      - "Cargo.toml"
+      - "schema.pgsql"
   pull_request:
     branches:
       - main
+    paths:
+      - "src/**"
+      - "Cargo.toml"
+      - "schema.pgsql"
   workflow_dispatch:
     
