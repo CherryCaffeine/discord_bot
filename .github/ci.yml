@@ -1,0 +1,21 @@
+ jobs:
+  tests:
+    runs-on: ubuntu-latest
+    name: Run Tests
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-tolchain@master
+        with:
+          components: clippy
+          toolchain: stable
+      - name: Run Tests
+        run: cargo test
+on:
+  push:
+    branches:
+      -main
+    pull_request:
+      branches:
+        -main
