@@ -1,5 +1,7 @@
 # Discord bot with ❤️ for Cherry
 
+[![.github/workflows/ci.yml](https://github.com/CherryCaffeine/discord_bot/actions/workflows/ci.yml/badge.svg)](https://github.com/CherryCaffeine/discord_bot/actions/workflows/ci.yml)
+
 ## Required tools
 
 * [Rust programming language tooling](https://www.rust-lang.org/tools/install)
