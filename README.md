@@ -13,6 +13,7 @@
 ## Usage
 
 * Use `.cargo/config.example.toml` as a template for your own `.cargo/config.toml`. Use the necessary [`DISCORD_TOKEN`](https://www.writebots.com/discord-bot-token/).
+* Ensure you have [Docker](https://docs.docker.com/get-docker/) installed. If you're new to this, [Docker Desktop](https://www.docker.com/products/docker-desktop/) will be the easiest way to get started.
 * Use `cargo shuttle run` to run the bot locally.
 * 😎 You got it! 😎
 
