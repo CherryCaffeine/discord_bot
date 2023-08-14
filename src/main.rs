@@ -206,31 +206,35 @@ mod tests {
     use serenity::client::bridge::gateway::ShardManager;
     use std::sync::Arc;
 
-    struct TestEventHandler;
+    struct TestEventHandler {
+        #[allow(dead_code)]
+        pool: PgPool,
+        bot_config: BotConfig,
+    }
 
     impl ConfigExt for TestEventHandler {
         fn discord_server_id(&self) -> GuildId {
-            todo!()
+            self.bot_config.discord_server_id
         }
 
         fn discord_bot_channel(&self) -> ChannelId {
-            todo!()
+            self.bot_config.discord_bot_channel
         }
 
         fn discord_self_role_channel(&self) -> ChannelId {
-            todo!()
+            self.bot_config.discord_self_role_channel
         }
 
         fn discord_token(&self) -> &str {
-            todo!()
+            &self.bot_config.discord_token
         }
 
         fn discord_prefix(&self) -> &str {
-            todo!()
+            &self.bot_config.discord_prefix
         }
 
         fn bot_config(&self) -> BotConfig {
-            todo!()
+            self.bot_config.clone()
         }
     }
 
@@ -254,12 +258,69 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_props() {
-        let mut client = build_client(TestEventHandler).await;
-
-        if let Err(why) = client.start().await {
-            println!("Client error: {:?}", why);
+    // We had to desugar the #[tokio::test] macro because
+    // we need to access the secret storage
+    #[::core::prelude::v1::test]
+    fn test_props() {
+        async fn __shuttle_test_props(
+            pool: PgPool,
+            secret_store: SecretStore,
+        ) -> shuttle_serenity::ShuttleSerenity {
+            pool.execute(include_str!("../schema.pgsql"))
+                .await
+                .expect("Failed to initialize database");
+            let bot_config = BotConfig::new(secret_store);
+            let client = build_client(TestEventHandler { pool, bot_config }).await;
+            Ok(client.into())
         }
+
+        async fn loader(
+            mut factory: shuttle_runtime::ProvisionerFactory,
+            mut resource_tracker: shuttle_runtime::ResourceTracker,
+            logger: shuttle_runtime::Logger,
+        ) -> shuttle_serenity::ShuttleSerenity {
+            use shuttle_runtime::tracing_subscriber::prelude::*;
+            use shuttle_runtime::Context;
+            use shuttle_runtime::ResourceBuilder;
+            let filter_layer = shuttle_runtime::tracing_subscriber::EnvFilter::try_from_default_env()
+                .or_else(|_| shuttle_runtime::tracing_subscriber::EnvFilter::try_new("INFO"))
+                .unwrap();
+            shuttle_runtime::tracing_subscriber::registry()
+                .with(filter_layer)
+                .with(logger)
+                .init();
+            let pool = shuttle_runtime::get_resource(
+                shuttle_shared_db::Postgres::new(),
+                &mut factory,
+                &mut resource_tracker,
+            )
+            .await
+            .context(format!(
+                "failed to provision {}",
+                stringify!(shuttle_shared_db::Postgres)
+            ))?;
+            let secret_store = shuttle_runtime::get_resource(
+                shuttle_secrets::Secrets::new(),
+                &mut factory,
+                &mut resource_tracker,
+            )
+            .await
+            .context(format!(
+                "failed to provision {}",
+                stringify!(shuttle_secrets::Secrets)
+            ))?;
+            __shuttle_serenity(pool, secret_store).await
+        }
+
+        let body = async {
+            shuttle_runtime::start(loader).await;
+        };
+        tokio::pin!(body);
+        let body: ::std::pin::Pin<&mut dyn ::std::future::Future<Output = ()>> = body;
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed building the Runtime")
+            .block_on(body);
     }
 }
