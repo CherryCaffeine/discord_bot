@@ -10,11 +10,11 @@
 * [`cargo-shuttle`](https://docs.shuttle.rs/introduction/installation)
 * 🎉 That's it! 🎉
 
-## Usage
+## How to run locally (for testing/development)
 
-* Use `.cargo/config.example.toml` as a template for your own `.cargo/config.toml`. Use the necessary [`DISCORD_TOKEN`](https://www.writebots.com/discord-bot-token/).
+* Run `cargo make ensure_config` in the terminal from `discord_bot/` to create `.cargo/config.toml` based on `.cargo/config.example.coml`.
 * Ensure you have [Docker](https://docs.docker.com/get-docker/) installed. If you're new to this, [Docker Desktop](https://www.docker.com/products/docker-desktop/) will be the easiest way to get started.
-* Use `cargo shuttle run` to run the bot locally.
+* Run `cargo shuttle run` in the terminal from `discord_bot/` to run the bot locally.
 * 😎 You got it! 😎
 
 ## How to contribute
