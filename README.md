@@ -12,7 +12,7 @@
 
 ## How to run locally (for testing/development)
 
-* Run `cargo make ensure_config` in the terminal from `discord_bot/` to create `.cargo/config.toml` based on `.cargo/config.example.coml`.
+* Run `cargo make ensure_config` in the terminal from `discord_bot/` to create `Secrets.toml` based on `Secrets.example.coml`.
 * Ensure you have [Docker](https://docs.docker.com/get-docker/) installed. If you're new to this, [Docker Desktop](https://www.docker.com/products/docker-desktop/) will be the easiest way to get started.
 * Run `cargo shuttle run` in the terminal from `discord_bot/` to run the bot locally.
 * 😎 You got it! 😎
