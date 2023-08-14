@@ -1,21 +1,19 @@
 use rand::seq::SliceRandom;
 use serenity::{
     http::{CacheHttp, Http},
-    model::prelude::{ChannelId, Member, UserId},
+    model::prelude::{ChannelId, Member, UserId, GuildId},
     prelude::Mentionable,
     utils::MessageBuilder,
 };
 
-use crate::immut_data::consts::DISCORD_SERVER_ID;
-
 pub(crate) mod macros;
 
-pub(super) async fn members(http: impl AsRef<Http>) -> Vec<Member> {
+pub(super) async fn members(http: impl AsRef<Http>, discord_server_id: GuildId) -> Vec<Member> {
     const DEFAULT_LIMIT: usize = 1000;
     const USE_DEFAULT_LIMIT: Option<u64> = None;
     const NO_USER_ID_OFFSET: Option<UserId> = None;
 
-    let members = DISCORD_SERVER_ID
+    let members = discord_server_id
         .members(http, USE_DEFAULT_LIMIT, NO_USER_ID_OFFSET)
         .await
         .unwrap_or_else(|e| {

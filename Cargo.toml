@@ -9,7 +9,7 @@ shuttle-serenity = "0.23.0"
 shuttle-runtime = "0.23.0"
 shuttle-shared-db = { version = "0.23", features = ["postgres"] }
 sqlx = { version = "0.7.1", features = ["postgres"] }
-# shuttle-secrets = "0.21.0"
+shuttle-secrets = "0.23.0"
 tokio = "1.29.1"
 tracing = "0.1.37"
 const-str = "0.5"

@@ -13,8 +13,8 @@ script = '''
 //! ```
 
 const TRIPLE_SINGLE_QUOTES: &str = "\u{27}\u{27}\u{27}";
-const CONFIG_EXAMPLE_PATH: &str = ".cargo/config.example.toml";
-const CONFIG_PATH: &str = ".cargo/config.toml";
+const CONFIG_EXAMPLE_PATH: &str = "Secrets.example.toml";
+const CONFIG_PATH: &str = "Secrets.toml";
 
 #[derive(Default)]
 struct TidyStringReadBuffer(String);
@@ -117,15 +117,8 @@ pub fn ensure_config() {
 
     let mut config: toml::Table = read_config_example(&crate_root);
 
-    let env = config
-        .get_mut("env")
-        .unwrap_or_else(|| panic!("Failed to get [env] table from {CONFIG_EXAMPLE_PATH}"));
-    let toml::Value::Table(env) = env else {
-        panic!("[env] in {CONFIG_EXAMPLE_PATH} is not a table");
-    };
-
     {
-        let token = env
+        let token = config
             .get_mut("DISCORD_TOKEN")
             .unwrap_or_else(|| panic!("Failed to get token from {CONFIG_EXAMPLE_PATH}"));
         let toml::Value::String(token) = token else {
@@ -216,7 +209,7 @@ pub fn ensure_config() {
     }
 
     {
-        let server_id: &mut toml::Value = env
+        let server_id: &mut toml::Value = config
             .get_mut("DISCORD_SERVER_ID")
             .unwrap_or_else(|| panic!("Failed to get the server ID from {CONFIG_EXAMPLE_PATH}"));
         let toml::Value::String(server_id) = server_id else {
@@ -243,7 +236,7 @@ pub fn ensure_config() {
 
     {
         let bot_channel: &mut toml::Value =
-            env.get_mut("DISCORD_BOT_CHANNEL").unwrap_or_else(|| {
+            config.get_mut("DISCORD_BOT_CHANNEL").unwrap_or_else(|| {
                 panic!("Failed to get the bot channel ID from {CONFIG_EXAMPLE_PATH}")
             });
         let toml::Value::String(bot_channel) = bot_channel else {
@@ -275,7 +268,7 @@ pub fn ensure_config() {
 
     {
         let self_role: &mut toml::Value =
-            env.get_mut("DISCORD_SELF_ROLE_CHANNEL").unwrap_or_else(|| {
+            config.get_mut("DISCORD_SELF_ROLE_CHANNEL").unwrap_or_else(|| {
                 panic!("Failed to get the self-role channel ID from {CONFIG_EXAMPLE_PATH}")
             });
         let toml::Value::String(self_role) = self_role else {

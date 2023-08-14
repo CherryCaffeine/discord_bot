@@ -1,9 +1,11 @@
+use immut_data::dynamic::BotConfig;
 use serenity::async_trait;
 use serenity::framework::StandardFramework;
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
-use serenity::model::prelude::{Guild, Member, PartialGuild};
+use serenity::model::prelude::{Guild, Member, PartialGuild, GuildId, ChannelId};
 use serenity::prelude::*;
+use shuttle_secrets::SecretStore;
 use sqlx::{Executor, PgPool};
 use tokio::sync::RwLockWriteGuard;
 
@@ -14,32 +16,44 @@ pub(crate) mod error;
 pub(crate) mod immut_data;
 pub(crate) mod util;
 
-use app_state::type_map_keys::{AppStateKey, PgPoolKey, ShardManagerKey};
+use app_state::type_map_keys::{AppStateKey, PgPoolKey, ShardManagerKey, BotConfigKey};
 use app_state::AppState;
 use commands::Progress;
 use commands::{GENERAL_GROUP, MY_HELP};
 use immut_data::consts::{
-    DISCORD_INTENTS, DISCORD_PREFIX, DISCORD_SERVER_ID, DISCORD_TOKEN, EXP_PER_MSG,
+    DISCORD_INTENTS, EXP_PER_MSG,
 };
 use util::members;
 
 use crate::app_state::exp::Exp;
 
-struct Bot {
-    pool: PgPool,
+trait ConfigExt {
+    fn discord_server_id(&self) -> GuildId;
+    fn discord_bot_channel(&self) -> ChannelId;
+    fn discord_self_role_channel(&self) -> ChannelId;
+    fn discord_token(&self) -> &str;
+    fn discord_prefix(&self) -> &str;
+    fn bot_config(&self) -> BotConfig;
 }
 
-async fn build_client<H: EventHandler + 'static>(event_handler: H) -> Client {
+struct Bot {
+    pool: PgPool,
+    pub(crate) bot_config: BotConfig,
+}
+
+async fn build_client<H: EventHandler + ConfigExt + 'static>(event_handler: H) -> Client {
     let framework = StandardFramework::new()
         .configure(|c| {
-            c.prefix(DISCORD_PREFIX);
+            c.prefix(event_handler.discord_prefix());
             c.owners(immut_data::dynamic::owners());
             c
         })
         .help(&MY_HELP)
         .group(&GENERAL_GROUP);
 
-    let client = Client::builder(DISCORD_TOKEN, DISCORD_INTENTS)
+    let bot_config = event_handler.bot_config();
+
+    let client = Client::builder(event_handler.discord_token(), DISCORD_INTENTS)
         .framework(framework)
         .event_handler(event_handler)
         .await
@@ -48,6 +62,7 @@ async fn build_client<H: EventHandler + 'static>(event_handler: H) -> Client {
     {
         let mut wlock: RwLockWriteGuard<TypeMap> = client.data.write().await;
         wlock.insert::<ShardManagerKey>(client.shard_manager.clone());
+        wlock.insert::<BotConfigKey>(bot_config);
     }
 
     client
@@ -65,12 +80,38 @@ impl Bot {
     }
 }
 
+impl ConfigExt for Bot {
+    fn discord_server_id(&self) -> GuildId {
+        self.bot_config.discord_server_id
+    }
+
+    fn discord_bot_channel(&self) -> ChannelId {
+        self.bot_config.discord_bot_channel
+    }
+
+    fn discord_self_role_channel(&self) -> ChannelId {
+        self.bot_config.discord_self_role_channel
+    }
+
+    fn discord_token(&self) -> &str {
+        &self.bot_config.discord_token
+    }
+
+    fn discord_prefix(&self) -> &str {
+        &self.bot_config.discord_prefix
+    }
+
+    fn bot_config(&self) -> BotConfig {
+        self.bot_config.clone()
+    }
+}
+
 #[async_trait]
 impl EventHandler for Bot {
     async fn ready(&self, ctx: Context, ready: Ready) {
-        let members = members(&ctx.http).await;
+        let members = members(&ctx.http, self.discord_server_id()).await;
 
-        let guild: PartialGuild = Guild::get(&ctx.http, DISCORD_SERVER_ID).await
+        let guild: PartialGuild = Guild::get(&ctx.http, self.discord_server_id()).await
             .unwrap_or_else(|e| panic!("Encountered a Serenity error when getting partial guild information about the discord server: {e:?}"));
 
         Self::print_server_members(&guild, &members);
@@ -117,7 +158,7 @@ impl EventHandler for Bot {
             return;
         }
         // we retain wlock because the checks are quick
-        if msg.content.starts_with(DISCORD_PREFIX) {
+        if msg.content.starts_with(self.discord_prefix()) {
             return;
         }
         if msg.author.bot {
@@ -129,7 +170,7 @@ impl EventHandler for Bot {
             let author: Member = msg.member(&ctx).await.unwrap_or_else(|e| {
                 panic!("Failed to get member info for the message author: {e}")
             });
-            app_state::sync::add_signed_exp(&ctx.http, app_state, &self.pool, &author, EXP_PER_MSG)
+            app_state::sync::add_signed_exp(&ctx.http, &self.bot_config, app_state, &self.pool, &author, EXP_PER_MSG)
                 .await
         };
 
@@ -147,12 +188,14 @@ impl EventHandler for Bot {
 #[shuttle_runtime::main]
 async fn serenity(
     #[shuttle_shared_db::Postgres] pool: PgPool,
+    #[shuttle_secrets::Secrets] secret_store: SecretStore,
 ) -> shuttle_serenity::ShuttleSerenity {
     pool.execute(include_str!("../schema.pgsql"))
         .await
         .expect("Failed to initialize database");
+    let bot_config = BotConfig::new(secret_store);
 
-    let client = build_client(Bot { pool }).await;
+    let client = build_client(Bot { pool, bot_config }).await;
 
     Ok(client.into())
 }
@@ -165,10 +208,36 @@ mod tests {
 
     struct TestEventHandler;
 
+    impl ConfigExt for TestEventHandler {
+        fn discord_server_id(&self) -> GuildId {
+            todo!()
+        }
+
+        fn discord_bot_channel(&self) -> ChannelId {
+            todo!()
+        }
+
+        fn discord_self_role_channel(&self) -> ChannelId {
+            todo!()
+        }
+
+        fn discord_token(&self) -> &str {
+            todo!()
+        }
+
+        fn discord_prefix(&self) -> &str {
+            todo!()
+        }
+
+        fn bot_config(&self) -> BotConfig {
+            todo!()
+        }
+    }
+
     #[async_trait]
     impl EventHandler for TestEventHandler {
         async fn ready(&self, ctx: Context, _: Ready) {
-            let members = members(&ctx.http).await;
+            let members = members(&ctx.http, self.discord_server_id()).await;
 
             // check if the members are sorted by id
             for w in members.windows(2) {

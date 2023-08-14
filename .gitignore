@@ -1,3 +1,3 @@
 /target
 Secrets*.toml
-.cargo/config.toml
+!Secrets.example.toml
