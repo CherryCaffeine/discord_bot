@@ -8,7 +8,6 @@ pub(crate) mod immut_data;
 pub(crate) mod util;
 mod bots;
 use util::build_client;
-pub(crate) use util::Result;
 use bots::Bot;
 
 #[shuttle_runtime::main]

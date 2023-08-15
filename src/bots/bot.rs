@@ -94,7 +94,7 @@ impl EventHandler for Bot {
         }
         println!("{}: {}", msg.author.name, msg.content);
 
-        let res: crate::Result<Exp> = {
+        let res: crate::util::Result<Exp> = {
             let author: Member = msg.member(&ctx).await.unwrap_or_else(|e| {
                 panic!("Failed to get member info for the message author: {e}")
             });
