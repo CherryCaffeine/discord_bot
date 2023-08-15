@@ -7,9 +7,19 @@ use serenity::{
 };
 use tokio::sync::RwLockWriteGuard;
 
-use crate::{config_ext::ConfigExt, immut_data::{self, consts::DISCORD_INTENTS}, commands::{MY_HELP, GENERAL_GROUP}, app_state::type_map_keys::{ShardManagerKey, BotConfigKey}};
+use crate::{bots::ConfigExt, immut_data::{self, consts::DISCORD_INTENTS}, commands::{MY_HELP, GENERAL_GROUP}, app_state::type_map_keys::{ShardManagerKey, BotConfigKey}};
 
 pub(crate) mod macros;
+
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum Error {
+    #[error("Sqlx error: {0}")]
+    Sqlx(#[from] sqlx::Error),
+    #[error("Serenity error: {0}")]
+    Serenity(#[from] serenity::Error),
+}
+
+pub(crate) type Result<T> = core::result::Result<T, Error>;
 
 pub(super) async fn members(http: impl AsRef<Http>, discord_server_id: GuildId) -> Vec<Member> {
     const DEFAULT_LIMIT: usize = 1000;

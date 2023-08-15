@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     app_state::{self, exp::Exp, type_map_keys::{AppStateKey, BotConfigKey}, AppState},
     util::say_wo_unintended_mentions,
-    Bot, ConfigExt,
+    bots::{Bot, ConfigExt},
 };
 use serenity::{
     async_trait,

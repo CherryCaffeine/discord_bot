@@ -6,7 +6,7 @@ use serenity::{
 use sqlx::PgPool;
 
 use super::AppState;
-use crate::{error, immut_data::dynamic::BotConfig};
+use crate::immut_data::dynamic::BotConfig;
 use crate::db;
 
 /// "Synchronized" way of adding experience points to a user.
@@ -19,7 +19,7 @@ pub(crate) async fn add_signed_exp(
     pool: &PgPool,
     member: &Member,
     delta: i64,
-) -> error::Result<Exp> {
+) -> crate::util::Result<Exp> {
     let discord_id: UserId = member.user.id;
     let db_exp: Exp = db::add_signed_exp(pool, discord_id, delta).await?;
     let in_cache_exp = if let Some(exp) = in_cache::add_signed_exp(app_state, discord_id, delta) {
@@ -89,7 +89,7 @@ pub(crate) async fn add_earned_role(
     pool: &PgPool,
     role_id: RoleId,
     exp_needed: Exp,
-) -> error::Result<()> {
+) -> crate::util::Result<()> {
     db::add_earned_role(pool, role_id, exp_needed).await?;
     let pos = sorted_earned_roles
         .binary_search_by_key(&exp_needed, |r| r.exp_needed)
