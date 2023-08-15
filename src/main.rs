@@ -148,13 +148,13 @@ mod tests {
     use serenity::client::bridge::gateway::ShardManager;
     use std::sync::Arc;
 
-    struct TestEventHandler {
+    struct TestBot {
         #[allow(dead_code)]
         pool: PgPool,
         bot_config: BotConfig,
     }
 
-    impl TestEventHandler {
+    impl TestBot {
         async fn new(pool: PgPool, secret_store: SecretStore) -> Self {
             let bot_config = BotConfig::new(secret_store);
             pool.execute(include_str!("../schema.pgsql"))
@@ -164,10 +164,10 @@ mod tests {
         }
     }
 
-    impl_config_ext!(TestEventHandler);
+    impl_config_ext!(TestBot);
 
     #[async_trait]
-    impl EventHandler for TestEventHandler {
+    impl EventHandler for TestBot {
         async fn ready(&self, ctx: Context, _: Ready) {
             let members = members(&ctx.http, self.discord_server_id()).await;
 
@@ -195,7 +195,7 @@ mod tests {
             pool: PgPool,
             secret_store: SecretStore,
         ) -> shuttle_serenity::ShuttleSerenity {
-            let test_bot = TestEventHandler::new(pool, secret_store).await;
+            let test_bot = TestBot::new(pool, secret_store).await;
             let client = build_client(test_bot).await;
             Ok(client.into())
         }
