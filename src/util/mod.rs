@@ -2,9 +2,12 @@ use rand::seq::SliceRandom;
 use serenity::{
     http::{CacheHttp, Http},
     model::prelude::{ChannelId, Member, UserId, GuildId},
-    prelude::Mentionable,
-    utils::MessageBuilder,
+    prelude::{Mentionable, EventHandler, TypeMap},
+    utils::MessageBuilder, Client, framework::StandardFramework,
 };
+use tokio::sync::RwLockWriteGuard;
+
+use crate::{config_ext::ConfigExt, immut_data::{self, consts::DISCORD_INTENTS}, commands::{MY_HELP, GENERAL_GROUP}, app_state::type_map_keys::{ShardManagerKey, BotConfigKey}};
 
 pub(crate) mod macros;
 
@@ -75,4 +78,31 @@ pub(super) async fn say_wo_unintended_mentions(
         .await?;
 
     Ok(())
+}
+
+pub(super) async fn build_client<H: EventHandler + ConfigExt + 'static>(event_handler: H) -> Client {
+    let framework = StandardFramework::new()
+        .configure(|c| {
+            c.prefix(event_handler.discord_prefix());
+            c.owners(immut_data::dynamic::owners());
+            c
+        })
+        .help(&MY_HELP)
+        .group(&GENERAL_GROUP);
+
+    let bot_config = event_handler.bot_config();
+
+    let client = Client::builder(event_handler.discord_token(), DISCORD_INTENTS)
+        .framework(framework)
+        .event_handler(event_handler)
+        .await
+        .expect("Err creating client");
+
+    {
+        let mut wlock: RwLockWriteGuard<TypeMap> = client.data.write().await;
+        wlock.insert::<ShardManagerKey>(client.shard_manager.clone());
+        wlock.insert::<BotConfigKey>(bot_config);
+    }
+
+    client
 }

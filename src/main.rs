@@ -1,6 +1,5 @@
 use immut_data::dynamic::BotConfig;
 use serenity::async_trait;
-use serenity::framework::StandardFramework;
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
 use serenity::model::prelude::{Guild, Member, PartialGuild, GuildId, ChannelId};
@@ -15,60 +14,30 @@ mod db;
 pub(crate) mod error;
 pub(crate) mod immut_data;
 pub(crate) mod util;
+mod config_ext;
 
-use app_state::type_map_keys::{AppStateKey, PgPoolKey, ShardManagerKey, BotConfigKey};
+use app_state::type_map_keys::{AppStateKey, PgPoolKey};
 use app_state::AppState;
 use commands::Progress;
-use commands::{GENERAL_GROUP, MY_HELP};
-use immut_data::consts::{
-    DISCORD_INTENTS, EXP_PER_MSG,
-};
-use util::members;
-
+use immut_data::consts::EXP_PER_MSG;
+use util::{members, build_client};
+use config_ext::{ConfigExt, impl_config_ext};
 use crate::app_state::exp::Exp;
-
-trait ConfigExt {
-    fn discord_server_id(&self) -> GuildId;
-    fn discord_bot_channel(&self) -> ChannelId;
-    fn discord_self_role_channel(&self) -> ChannelId;
-    fn discord_token(&self) -> &str;
-    fn discord_prefix(&self) -> &str;
-    fn bot_config(&self) -> BotConfig;
-}
 
 struct Bot {
     pool: PgPool,
     pub(crate) bot_config: BotConfig,
 }
 
-async fn build_client<H: EventHandler + ConfigExt + 'static>(event_handler: H) -> Client {
-    let framework = StandardFramework::new()
-        .configure(|c| {
-            c.prefix(event_handler.discord_prefix());
-            c.owners(immut_data::dynamic::owners());
-            c
-        })
-        .help(&MY_HELP)
-        .group(&GENERAL_GROUP);
-
-    let bot_config = event_handler.bot_config();
-
-    let client = Client::builder(event_handler.discord_token(), DISCORD_INTENTS)
-        .framework(framework)
-        .event_handler(event_handler)
-        .await
-        .expect("Err creating client");
-
-    {
-        let mut wlock: RwLockWriteGuard<TypeMap> = client.data.write().await;
-        wlock.insert::<ShardManagerKey>(client.shard_manager.clone());
-        wlock.insert::<BotConfigKey>(bot_config);
+impl Bot {
+    async fn new(pool: PgPool, secret_store: SecretStore) -> Self {
+        let bot_config = BotConfig::new(secret_store);
+        pool.execute(include_str!("../schema.pgsql"))
+            .await
+            .expect("Failed to initialize database");
+        Self { pool, bot_config }
     }
 
-    client
-}
-
-impl Bot {
     fn print_server_members(server: &PartialGuild, members: &[Member]) {
         println!("Members of {} ({} total):", server.name, members.len());
 
@@ -80,31 +49,7 @@ impl Bot {
     }
 }
 
-impl ConfigExt for Bot {
-    fn discord_server_id(&self) -> GuildId {
-        self.bot_config.discord_server_id
-    }
-
-    fn discord_bot_channel(&self) -> ChannelId {
-        self.bot_config.discord_bot_channel
-    }
-
-    fn discord_self_role_channel(&self) -> ChannelId {
-        self.bot_config.discord_self_role_channel
-    }
-
-    fn discord_token(&self) -> &str {
-        &self.bot_config.discord_token
-    }
-
-    fn discord_prefix(&self) -> &str {
-        &self.bot_config.discord_prefix
-    }
-
-    fn bot_config(&self) -> BotConfig {
-        self.bot_config.clone()
-    }
-}
+impl_config_ext!(Bot);
 
 #[async_trait]
 impl EventHandler for Bot {
@@ -190,18 +135,15 @@ async fn serenity(
     #[shuttle_shared_db::Postgres] pool: PgPool,
     #[shuttle_secrets::Secrets] secret_store: SecretStore,
 ) -> shuttle_serenity::ShuttleSerenity {
-    pool.execute(include_str!("../schema.pgsql"))
-        .await
-        .expect("Failed to initialize database");
-    let bot_config = BotConfig::new(secret_store);
-
-    let client = build_client(Bot { pool, bot_config }).await;
-
+    let bot = Bot::new(pool, secret_store).await;
+    let client = build_client(bot).await;
     Ok(client.into())
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::app_state::type_map_keys::ShardManagerKey;
+
     use super::*;
     use serenity::client::bridge::gateway::ShardManager;
     use std::sync::Arc;
@@ -212,31 +154,17 @@ mod tests {
         bot_config: BotConfig,
     }
 
-    impl ConfigExt for TestEventHandler {
-        fn discord_server_id(&self) -> GuildId {
-            self.bot_config.discord_server_id
-        }
-
-        fn discord_bot_channel(&self) -> ChannelId {
-            self.bot_config.discord_bot_channel
-        }
-
-        fn discord_self_role_channel(&self) -> ChannelId {
-            self.bot_config.discord_self_role_channel
-        }
-
-        fn discord_token(&self) -> &str {
-            &self.bot_config.discord_token
-        }
-
-        fn discord_prefix(&self) -> &str {
-            &self.bot_config.discord_prefix
-        }
-
-        fn bot_config(&self) -> BotConfig {
-            self.bot_config.clone()
+    impl TestEventHandler {
+        async fn new(pool: PgPool, secret_store: SecretStore) -> Self {
+            let bot_config = BotConfig::new(secret_store);
+            pool.execute(include_str!("../schema.pgsql"))
+                .await
+                .expect("Failed to initialize database");
+            Self { pool, bot_config }
         }
     }
+
+    impl_config_ext!(TestEventHandler);
 
     #[async_trait]
     impl EventHandler for TestEventHandler {
@@ -245,7 +173,8 @@ mod tests {
 
             // check if the members are sorted by id
             for w in members.windows(2) {
-                assert!(w[0].user.id <= w[1].user.id);
+                let [left, right] = w else { unreachable!() };
+                assert!(left.user.id <= right.user.id);
             }
 
             let mut owlock: tokio::sync::OwnedRwLockWriteGuard<TypeMap> =
@@ -266,11 +195,8 @@ mod tests {
             pool: PgPool,
             secret_store: SecretStore,
         ) -> shuttle_serenity::ShuttleSerenity {
-            pool.execute(include_str!("../schema.pgsql"))
-                .await
-                .expect("Failed to initialize database");
-            let bot_config = BotConfig::new(secret_store);
-            let client = build_client(TestEventHandler { pool, bot_config }).await;
+            let test_bot = TestEventHandler::new(pool, secret_store).await;
+            let client = build_client(test_bot).await;
             Ok(client.into())
         }
 
@@ -309,7 +235,7 @@ mod tests {
                 "failed to provision {}",
                 stringify!(shuttle_secrets::Secrets)
             ))?;
-            __shuttle_serenity(pool, secret_store).await
+            __shuttle_test_props(pool, secret_store).await
         }
 
         let body = async {
