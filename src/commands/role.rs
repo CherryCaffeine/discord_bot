@@ -203,6 +203,7 @@ async fn role(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
+#[description = "See the list of role ids."]
 async fn ids(ctx: &Context, msg: &Message) -> CommandResult {
     let rlock = ctx.data.read().await;
     let bot_cfg = rlock.get::<BotCfgKey>().unwrap();
@@ -240,6 +241,7 @@ async fn ids(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[sub_commands(earned)]
+#[description = "Command set for adding roles."]
 async fn add(ctx: &Context, msg: &Message) -> CommandResult {
     let rlock = ctx.data.read().await;
     let bot_cfg = rlock.get::<BotCfgKey>().unwrap();
@@ -292,6 +294,7 @@ async fn add(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
+#[description = "Starts interactively prompting the caller to create an earned role."]
 async fn earned(ctx: &Context, msg: &Message) -> CommandResult {
     let mut msg_builder = MessageBuilder::new();
     msg_builder.mention(&msg.author);
