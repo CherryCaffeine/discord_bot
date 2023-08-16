@@ -13,10 +13,17 @@
 * [`cargo-shuttle`](https://docs.shuttle.rs/introduction/installation)
 * 🎉 That's it! 🎉
 
+## How to get the local version of the repository or its fork
+
+* Ensure you have `git` installed.
+* Open the terminal (or command prompt). On Windows, you can do this by pressing `Win + R`, typing `cmd`, and pressing the "OK" button.
+* Navigate to the directory where you would like to keep the local version of the repository or its fork. You can do this by running `cd <path-to-the-directory>` in the terminal. For example, running `cd C:\Users\<username>\Desktop` will navigate you to the desktop of user `<username>`.
+* Run `git clone <repo>` where `<repo>` is the link to the repository or its fork. For example, running `git clone https://github.com/CherryCaffeine/discord_bot` will get the local version of the original repository.
+
 ## How to run locally (for testing/development)
 
 * Ensure you have the [required tools](#required-tools) installed.
-* Ensure you have the local version of the repository. You can do this by running `git clone https://github.com/CherryCaffeine/discord_bot` in the directory where you would like to keep `discord_bot/` directory.
+* Ensure you have the [local version of the repository or its fork](#how-to-get-the-local-version-of-the-repository-or-its-fork).
 * Run `git pull` in the terminal from `discord_bot/` to get the latest updates.
 * Run `cargo make ensure_cfg` in the terminal from `discord_bot/` to create `Secrets.toml` based on `Secrets.example.coml`.
 * Ensure you have [Docker](https://docs.docker.com/get-docker/) installed. If you're new to this, [Docker Desktop](https://www.docker.com/products/docker-desktop/) will be the easiest way to get started.
