@@ -15,6 +15,9 @@
 
 ## How to run locally (for testing/development)
 
+* Ensure you have the [required tools](#required-tools) installed.
+* Ensure you have the local version of the repository. You can do this by running `git clone https://github.com/CherryCaffeine/discord_bot` in the directory where you would like to keep `discord_bot/` directory.
+* Run `git pull` in the terminal from `discord_bot/` to get the latest updates.
 * Run `cargo make ensure_cfg` in the terminal from `discord_bot/` to create `Secrets.toml` based on `Secrets.example.coml`.
 * Ensure you have [Docker](https://docs.docker.com/get-docker/) installed. If you're new to this, [Docker Desktop](https://www.docker.com/products/docker-desktop/) will be the easiest way to get started.
 * Run `cargo shuttle run` in the terminal from `discord_bot/` to run the bot locally.
