@@ -1,13 +1,20 @@
 use rand::seq::SliceRandom;
 use serenity::{
+    framework::StandardFramework,
     http::{CacheHttp, Http},
-    model::prelude::{ChannelId, Member, UserId, GuildId},
-    prelude::{Mentionable, EventHandler, TypeMap},
-    utils::MessageBuilder, Client, framework::StandardFramework,
+    model::prelude::{ChannelId, GuildId, Member, UserId},
+    prelude::{EventHandler, Mentionable, TypeMap},
+    utils::MessageBuilder,
+    Client,
 };
 use tokio::sync::RwLockWriteGuard;
 
-use crate::{bots::CfgExt, immut_data::{self, consts::DISCORD_INTENTS}, commands::{MY_HELP, GENERAL_GROUP}, app_state::type_map_keys::{ShardManagerKey, BotCfgKey}};
+use crate::{
+    app_state::type_map_keys::{BotCfgKey, ShardManagerKey},
+    bots::CfgExt,
+    commands::{GENERAL_GROUP, MY_HELP},
+    immut_data::{self, consts::DISCORD_INTENTS},
+};
 
 pub(crate) mod macros;
 

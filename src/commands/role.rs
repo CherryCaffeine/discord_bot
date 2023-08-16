@@ -1,9 +1,14 @@
 use std::collections::HashMap;
 
 use crate::{
-    app_state::{self, exp::Exp, type_map_keys::{AppStateKey, BotCfgKey}, AppState},
-    util::say_wo_unintended_mentions,
+    app_state::{
+        self,
+        exp::Exp,
+        type_map_keys::{AppStateKey, BotCfgKey},
+        AppState,
+    },
     bots::{Bot, CfgExt},
+    util::say_wo_unintended_mentions,
 };
 use serenity::{
     async_trait,
@@ -39,7 +44,9 @@ impl Progress for EarnedRolePromptProgress {
         if msg.channel_id != bot.discord_bot_channel() {
             msg_builder.push("You have one or more pending prompts for adding an earned role. ");
             msg_builder.push("Please complete them in the bot channel.");
-            bot.discord_bot_channel().say(http, &msg_builder.build()).await?;
+            bot.discord_bot_channel()
+                .say(http, &msg_builder.build())
+                .await?;
             return Ok(Some(self));
         };
 
@@ -57,7 +64,8 @@ impl Progress for EarnedRolePromptProgress {
                 Some(self)
             }
             Self::CollectedName(name) => {
-                let role = bot.discord_server_id()
+                let role = bot
+                    .discord_server_id()
                     .create_role(http, |r| r.name(&name))
                     .await?;
                 // TODO: in case of error, repeat the prompt
@@ -81,7 +89,9 @@ impl Progress for EarnedRolePromptProgress {
                 None
             }
         };
-        bot.discord_bot_channel().say(http, &msg_builder.build()).await?;
+        bot.discord_bot_channel()
+            .say(http, &msg_builder.build())
+            .await?;
         Ok(ret)
     }
 }
@@ -147,7 +157,8 @@ async fn role(ctx: &Context, msg: &Message) -> CommandResult {
         }
     };
 
-    bot_cfg.discord_bot_channel
+    bot_cfg
+        .discord_bot_channel
         .say(&ctx.http, &msg_builder.build())
         .await?;
     if msg.channel_id != bot_cfg.discord_bot_channel {
@@ -180,7 +191,13 @@ async fn ids(ctx: &Context, msg: &Message) -> CommandResult {
         msg_builder.build()
     };
 
-    say_wo_unintended_mentions(bot_cfg.discord_bot_channel, &ctx, Some(msg.author.id), &response).await?;
+    say_wo_unintended_mentions(
+        bot_cfg.discord_bot_channel,
+        &ctx,
+        Some(msg.author.id),
+        &response,
+    )
+    .await?;
     if msg.channel_id != bot_cfg.discord_bot_channel {
         msg.delete(&ctx.http).await?;
     };
@@ -229,7 +246,8 @@ async fn add(ctx: &Context, msg: &Message) -> CommandResult {
         }
     };
 
-    bot_cfg.discord_bot_channel
+    bot_cfg
+        .discord_bot_channel
         .say(&ctx.http, &msg_builder.build())
         .await?;
     if msg.channel_id != bot_cfg.discord_bot_channel {
@@ -251,7 +269,8 @@ async fn earned(ctx: &Context, msg: &Message) -> CommandResult {
         let app_state: &mut AppState = wlock
             .get_mut::<AppStateKey>()
             .expect("Failed to get the app state from the typemap");
-        let earned_role_reqs: &mut Vec<EarnedRolePromptReq> = &mut app_state.reqd_prompts.earned_role;
+        let earned_role_reqs: &mut Vec<EarnedRolePromptReq> =
+            &mut app_state.reqd_prompts.earned_role;
         let req: Option<&mut EarnedRolePromptReq> = earned_role_reqs
             .iter_mut()
             .find(|req| req.discord_id == msg.author.id);
@@ -265,7 +284,8 @@ async fn earned(ctx: &Context, msg: &Message) -> CommandResult {
     let rlock = ctx.data.read().await;
     let bot_cfg = rlock.get::<BotCfgKey>().unwrap();
 
-    bot_cfg.discord_bot_channel
+    bot_cfg
+        .discord_bot_channel
         .say(&ctx.http, &msg_builder.build())
         .await?;
     if msg.channel_id != bot_cfg.discord_bot_channel {

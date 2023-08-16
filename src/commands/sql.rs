@@ -9,7 +9,7 @@ use serenity::{
 use sqlx::{Column, PgPool, Row, TypeInfo, ValueRef};
 
 use crate::{
-    app_state::type_map_keys::{PgPoolKey, BotCfgKey},
+    app_state::type_map_keys::{BotCfgKey, PgPoolKey},
     immut_data::dynamic::WHITESPACE,
 };
 

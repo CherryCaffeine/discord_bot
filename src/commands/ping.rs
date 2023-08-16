@@ -18,7 +18,10 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
             .push(" ")
             .push("I'm over here, lovely! 💕")
             .build();
-        bot_cfg.discord_bot_channel.say(&ctx.http, &response).await?;
+        bot_cfg
+            .discord_bot_channel
+            .say(&ctx.http, &response)
+            .await?;
         msg.delete(&ctx.http).await.unwrap_or_else(|e| {
             eprintln!("Error deleting message: {e}");
         });

@@ -2,13 +2,13 @@ use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
 
 mod app_state;
+mod bots;
 mod commands;
 mod db;
 pub(crate) mod immut_data;
 pub(crate) mod util;
-mod bots;
-use util::build_client;
 use bots::Bot;
+use util::build_client;
 
 #[shuttle_runtime::main]
 async fn serenity(
@@ -51,9 +51,10 @@ mod tests {
             use shuttle_runtime::tracing_subscriber::prelude::*;
             use shuttle_runtime::Context;
             use shuttle_runtime::ResourceBuilder;
-            let filter_layer = shuttle_runtime::tracing_subscriber::EnvFilter::try_from_default_env()
-                .or_else(|_| shuttle_runtime::tracing_subscriber::EnvFilter::try_new("INFO"))
-                .unwrap();
+            let filter_layer =
+                shuttle_runtime::tracing_subscriber::EnvFilter::try_from_default_env()
+                    .or_else(|_| shuttle_runtime::tracing_subscriber::EnvFilter::try_new("INFO"))
+                    .unwrap();
             shuttle_runtime::tracing_subscriber::registry()
                 .with(filter_layer)
                 .with(logger)

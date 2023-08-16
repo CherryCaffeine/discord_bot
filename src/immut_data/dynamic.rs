@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use once_cell::sync::Lazy;
 use regex::Regex;
-use serenity::model::prelude::{UserId, GuildId, ChannelId};
+use serenity::model::prelude::{ChannelId, GuildId, UserId};
 
 // The method for configuration of the bot
 // https://docs.rs/serenity/latest/serenity/framework/standard/struct.Configuration.html#method.owners
@@ -33,7 +33,8 @@ impl BotCfg {
         let discord_bot_channel = ChannelId(discord_bot_channel.parse::<u64>().unwrap());
 
         let discord_self_role_channel = secret_store.get("DISCORD_SELF_ROLE_CHANNEL").unwrap();
-        let discord_self_role_channel = ChannelId(discord_self_role_channel.parse::<u64>().unwrap());
+        let discord_self_role_channel =
+            ChannelId(discord_self_role_channel.parse::<u64>().unwrap());
 
         let discord_token = secret_store.get("DISCORD_TOKEN").unwrap();
         let discord_prefix = secret_store.get("DISCORD_PREFIX").unwrap();

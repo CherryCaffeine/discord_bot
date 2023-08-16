@@ -1,11 +1,18 @@
 use std::sync::Arc;
 
-use serenity::{async_trait, prelude::{Context, EventHandler, TypeMap}, model::prelude::Ready, client::bridge::gateway::ShardManager};
+use serenity::{
+    async_trait,
+    client::bridge::gateway::ShardManager,
+    model::prelude::Ready,
+    prelude::{Context, EventHandler, TypeMap},
+};
 use shuttle_secrets::SecretStore;
-use sqlx::{PgPool, Executor};
+use sqlx::{Executor, PgPool};
 use tokio::sync::Mutex;
 
-use crate::{immut_data::dynamic::BotCfg, util::members, app_state::type_map_keys::ShardManagerKey};
+use crate::{
+    app_state::type_map_keys::ShardManagerKey, immut_data::dynamic::BotCfg, util::members,
+};
 
 use super::{cfg_ext::impl_cfg_ext, CfgExt};
 
@@ -41,8 +48,7 @@ impl EventHandler for TestBot {
             assert!(left.user.id <= right.user.id);
         }
 
-        let mut owlock: tokio::sync::OwnedRwLockWriteGuard<TypeMap> =
-            ctx.data.write_owned().await;
+        let mut owlock: tokio::sync::OwnedRwLockWriteGuard<TypeMap> = ctx.data.write_owned().await;
         let sm: Arc<Mutex<ShardManager>> = owlock
             .remove::<ShardManagerKey>()
             .expect("The typemap was expected to contain a shard manager");

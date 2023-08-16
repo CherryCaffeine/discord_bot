@@ -1,17 +1,31 @@
-use serenity::{model::prelude::{PartialGuild, Member, Ready, Guild, Message}, async_trait, prelude::{EventHandler, Context, TypeMap}};
+use serenity::{
+    async_trait,
+    model::prelude::{Guild, Member, Message, PartialGuild, Ready},
+    prelude::{Context, EventHandler, TypeMap},
+};
 use shuttle_secrets::SecretStore;
-use sqlx::{PgPool, Executor};
+use sqlx::{Executor, PgPool};
 use tokio::sync::RwLockWriteGuard;
 
-use crate::{immut_data::{dynamic::BotCfg, consts::EXP_PER_MSG}, util::members, app_state::{AppState, type_map_keys::{AppStateKey, PgPoolKey}, exp::Exp, self}, commands::Progress};
+use crate::{
+    app_state::{
+        self,
+        exp::Exp,
+        type_map_keys::{AppStateKey, PgPoolKey},
+        AppState,
+    },
+    commands::Progress,
+    immut_data::{consts::EXP_PER_MSG, dynamic::BotCfg},
+    util::members,
+};
 
 use super::cfg_ext::{impl_cfg_ext, CfgExt};
 
 /// The bot structure that is used to
-/// 
+///
 /// * populate the [Context::data] with run-time data during [EventHandler::ready].
 /// * handle [EventHandler] events.
-/// 
+///
 /// Note that commands do not have the direct access to the [Bot] struct and
 /// use [Context::data] instead.
 pub(crate) struct Bot {
@@ -108,8 +122,15 @@ impl EventHandler for Bot {
             let author: Member = msg.member(&ctx).await.unwrap_or_else(|e| {
                 panic!("Failed to get member info for the message author: {e}")
             });
-            app_state::sync::add_signed_exp(&ctx.http, &self.cfg, app_state, &self.pool, &author, EXP_PER_MSG)
-                .await
+            app_state::sync::add_signed_exp(
+                &ctx.http,
+                &self.cfg,
+                app_state,
+                &self.pool,
+                &author,
+                EXP_PER_MSG,
+            )
+            .await
         };
 
         match res {

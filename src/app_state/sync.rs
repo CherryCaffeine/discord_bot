@@ -6,8 +6,8 @@ use serenity::{
 use sqlx::PgPool;
 
 use super::AppState;
-use crate::immut_data::dynamic::BotCfg;
 use crate::db;
+use crate::immut_data::dynamic::BotCfg;
 
 /// "Synchronized" way of adding experience points to a user.
 ///
@@ -54,8 +54,13 @@ pub(crate) async fn add_signed_exp(
                     Some(r) => r.role_id,
                     None => unreachable!("The user has an invalid earned_role_idx"),
                 };
-                http.remove_member_role(cfg.discord_server_id.0, user.discord_id.0, old_role.0, None)
-                    .await?;
+                http.remove_member_role(
+                    cfg.discord_server_id.0,
+                    user.discord_id.0,
+                    old_role.0,
+                    None,
+                )
+                .await?;
                 idx + 1
             }
             None => 0,
@@ -132,8 +137,13 @@ pub(crate) async fn add_earned_role(
                     Some(r) => r.role_id,
                     None => unreachable!("The user has an invalid earned_role_idx"),
                 };
-                http.remove_member_role(cfg.discord_server_id.0, sm.discord_id.0, old_role_id.0, None)
-                    .await?;
+                http.remove_member_role(
+                    cfg.discord_server_id.0,
+                    sm.discord_id.0,
+                    old_role_id.0,
+                    None,
+                )
+                .await?;
                 http.add_member_role(cfg.discord_server_id.0, sm.discord_id.0, role_id.0, None)
                     .await?;
             }
