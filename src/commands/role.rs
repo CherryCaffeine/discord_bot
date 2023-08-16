@@ -1,9 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::ControlFlow};
 
 use crate::{
     app_state::{
         self,
         exp::Exp,
+        reqd_prompts::ReqdPrompts,
         type_map_keys::{AppStateKey, BotCfgKey},
         AppState,
     },
@@ -113,6 +114,39 @@ impl EarnedRolePromptReq {
             discord_id,
             progress: EarnedRolePromptProgress::default(),
         }
+    }
+
+    /// Handles the earned role input request if it is pending.
+    /// Returns `ControlFlow::Break(())` if the request was handled
+    /// or `ControlFlow::Continue` if it was not pending.
+    pub(crate) async fn handle_if_pending(
+        bot: &MainBot,
+        ctx: &Context,
+        msg: &Message,
+        sorted_earned_roles: &mut Vec<app_state::EarnedRole>,
+        reqd_prompts: &mut ReqdPrompts,
+        users: &mut Vec<app_state::ServerMember>,
+    ) -> ControlFlow<()> {
+        if let Some((i, req)) = reqd_prompts
+            .earned_role
+            .iter_mut()
+            .enumerate()
+            .find(|(_i, req)| req.discord_id == msg.author.id)
+        {
+            match req
+                .progress
+                .advance(bot, &ctx.http, sorted_earned_roles, users, msg)
+                .await
+                .unwrap()
+            {
+                Some(_req) => (),
+                None => {
+                    reqd_prompts.earned_role.remove(i);
+                }
+            };
+            return ControlFlow::Break(());
+        }
+        ControlFlow::Continue(())
     }
 }
 

@@ -10,7 +10,7 @@ use self::{exp::Exp, reqd_prompts::ReqdPrompts};
 pub(crate) mod exp;
 mod in_cache;
 mod membership;
-mod reqd_prompts;
+pub(crate) mod reqd_prompts;
 mod roles;
 pub(crate) mod sync;
 pub(crate) mod type_map_keys;
@@ -21,6 +21,7 @@ pub(crate) struct AppState {
     pub(crate) users: Vec<ServerMember>,
     pub(crate) reqd_prompts: ReqdPrompts,
     pub(crate) sorted_earned_roles: Vec<EarnedRole>,
+    #[allow(dead_code)]
     pub(crate) self_role_msgs: SelfRoleMsgs,
 }
 

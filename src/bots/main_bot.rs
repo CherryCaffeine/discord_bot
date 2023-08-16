@@ -14,7 +14,6 @@ use crate::{
         type_map_keys::{AppStateKey, PgPoolKey},
         AppState,
     },
-    commands::Progress,
     immut_data::{consts::EXP_PER_MSG, dynamic::BotCfg},
     util::members,
 };
@@ -26,8 +25,10 @@ use super::bot::{impl_bot, Bot};
 /// * populate the [Context::data] with run-time data during [EventHandler::ready].
 /// * handle [EventHandler] events.
 ///
-/// Note that commands do not have the direct access to the [MainBot] struct and
-/// use [Context::data] instead.
+/// *Note that commands do not have the direct access to the [MainBot] struct and
+/// use [Context::data] instead*.
+///
+/// Notably, it implements the [EventHandler] trait.
 ///
 /// The test version of the bot is [`TestBot`](crate::bots::TestBot).
 pub(crate) struct MainBot {
@@ -88,31 +89,24 @@ impl EventHandler for MainBot {
         let app_state: &mut AppState = wlock
             .get_mut::<AppStateKey>()
             .expect("Failed to get the app cache from the typemap");
+        // The destructuring is used to intentionally prevent compilation if the AppState
+        // structure is changed. This code below is highly prone to logical errors if the
+        // AppState structure is changed.
         let AppState {
             users,
             reqd_prompts,
             sorted_earned_roles,
-            self_role_msgs: _self_role_msgs,
+            // Underscore pattern is used to silence the unused variable warning.
+            self_role_msgs: _,
         } = app_state;
-        if let Some((i, req)) = reqd_prompts
-            .earned_role
-            .iter_mut()
-            .enumerate()
-            .find(|(_i, req)| req.discord_id == msg.author.id)
+        if reqd_prompts
+            .handle_if_pending(self, &ctx, &msg, sorted_earned_roles, users)
+            .await
+            .is_break()
         {
-            match req
-                .progress
-                .advance(self, &ctx.http, sorted_earned_roles, users, &msg)
-                .await
-                .unwrap()
-            {
-                Some(_req) => (),
-                None => {
-                    app_state.reqd_prompts.earned_role.remove(i);
-                }
-            };
             return;
         }
+
         // we retain wlock because the checks are quick
         if msg.content.starts_with(self.discord_prefix()) {
             return;
