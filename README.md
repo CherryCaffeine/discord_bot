@@ -1,6 +1,8 @@
-# Discord bot with ❤️ for Cherry
+# Discord bot Vampy ❤️
 
 [![.github/workflows/ci.yml](https://github.com/CherryCaffeine/discord_bot/actions/workflows/ci.yml/badge.svg)](https://github.com/CherryCaffeine/discord_bot/actions/workflows/ci.yml)
+
+![Vampy](https://i.imgur.com/TdtIHhP.png)
 
 ## Required tools
 
