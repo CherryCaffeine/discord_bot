@@ -15,10 +15,11 @@
 
 ## How to get the local version of the repository or its fork
 
-* Ensure you have `git` installed.
-* Open the terminal (or command prompt). On Windows, you can do this by pressing `Win + R`, typing `cmd`, and pressing the "OK" button.
+* Open the terminal (or command prompt). On Windows, you can do this by pressing `Win + R`, typing `cmd`, and pressing the "OK" button. [Screenshot](https://i.imgur.com/fgF41Jm.png).
 * Navigate to the directory where you would like to keep the local version of the repository or its fork. You can do this by running `cd <path-to-the-directory>` in the terminal. For example, running `cd C:\Users\<username>\Desktop` will navigate you to the desktop of user `<username>`.
+* Run `git --version` to verify that `git` is installed. If it's not, check [required tools](#required-tools).
 * Run `git clone <repo>` where `<repo>` is the link to the repository or its fork. For example, running `git clone https://github.com/CherryCaffeine/discord_bot` will get the local version of the original repository.
+* 😎 You got it! 😎
 
 ## How to run locally (for testing/development)
 
