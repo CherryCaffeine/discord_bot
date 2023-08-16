@@ -16,7 +16,7 @@ pub(crate) static WHITESPACE: Lazy<Regex> = Lazy::new(|| Regex::new(r"[\s\n\r\t]
 use shuttle_secrets::SecretStore;
 
 #[derive(Clone)]
-pub(crate) struct BotConfig {
+pub(crate) struct BotCfg {
     pub(crate) discord_server_id: GuildId,
     pub(crate) discord_bot_channel: ChannelId,
     pub(crate) discord_self_role_channel: ChannelId,
@@ -24,7 +24,7 @@ pub(crate) struct BotConfig {
     pub(crate) discord_prefix: String,
 }
 
-impl BotConfig {
+impl BotCfg {
     pub(crate) fn new(secret_store: SecretStore) -> Self {
         let discord_server_id = secret_store.get("DISCORD_SERVER_ID").unwrap();
         let discord_server_id = GuildId(discord_server_id.parse::<u64>().unwrap());

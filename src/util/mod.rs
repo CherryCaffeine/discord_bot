@@ -7,7 +7,7 @@ use serenity::{
 };
 use tokio::sync::RwLockWriteGuard;
 
-use crate::{bots::ConfigExt, immut_data::{self, consts::DISCORD_INTENTS}, commands::{MY_HELP, GENERAL_GROUP}, app_state::type_map_keys::{ShardManagerKey, BotConfigKey}};
+use crate::{bots::CfgExt, immut_data::{self, consts::DISCORD_INTENTS}, commands::{MY_HELP, GENERAL_GROUP}, app_state::type_map_keys::{ShardManagerKey, BotCfgKey}};
 
 pub(crate) mod macros;
 
@@ -90,28 +90,28 @@ pub(super) async fn say_wo_unintended_mentions(
     Ok(())
 }
 
-pub(super) async fn build_client<H: EventHandler + ConfigExt + 'static>(event_handler: H) -> Client {
+pub(super) async fn build_client<B: EventHandler + CfgExt + 'static>(bot: B) -> Client {
     let framework = StandardFramework::new()
         .configure(|c| {
-            c.prefix(event_handler.discord_prefix());
+            c.prefix(bot.discord_prefix());
             c.owners(immut_data::dynamic::owners());
             c
         })
         .help(&MY_HELP)
         .group(&GENERAL_GROUP);
 
-    let bot_config = event_handler.bot_config();
+    let bot_cfg = bot.cfg();
 
-    let client = Client::builder(event_handler.discord_token(), DISCORD_INTENTS)
+    let client = Client::builder(bot.discord_token(), DISCORD_INTENTS)
         .framework(framework)
-        .event_handler(event_handler)
+        .event_handler(bot)
         .await
         .expect("Err creating client");
 
     {
         let mut wlock: RwLockWriteGuard<TypeMap> = client.data.write().await;
         wlock.insert::<ShardManagerKey>(client.shard_manager.clone());
-        wlock.insert::<BotConfigKey>(bot_config);
+        wlock.insert::<BotCfgKey>(bot_cfg);
     }
 
     client

@@ -9,7 +9,7 @@ use serenity::{
 use sqlx::{Column, PgPool, Row, TypeInfo, ValueRef};
 
 use crate::{
-    app_state::type_map_keys::{PgPoolKey, BotConfigKey},
+    app_state::type_map_keys::{PgPoolKey, BotCfgKey},
     immut_data::dynamic::WHITESPACE,
 };
 
@@ -18,13 +18,13 @@ use crate::{
 #[description = "Vampy will run any PostgreSQL <https://www.crunchydata.com/developers/playground/psql-basics> errands for you. Use with caution."]
 async fn sql(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
-    let bot_config = data
-        .get::<BotConfigKey>()
+    let bot_cfg = data
+        .get::<BotCfgKey>()
         .unwrap_or_else(|| panic!("Failed to get the bot config from the typemap"));
     let query = {
         let q = msg
             .content
-            .trim_start_matches(&bot_config.discord_prefix)
+            .trim_start_matches(&bot_cfg.discord_prefix)
             .trim_start_matches("sql ");
         WHITESPACE.replace_all(q, " ")
     };

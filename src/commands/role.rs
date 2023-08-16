@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{
-    app_state::{self, exp::Exp, type_map_keys::{AppStateKey, BotConfigKey}, AppState},
+    app_state::{self, exp::Exp, type_map_keys::{AppStateKey, BotCfgKey}, AppState},
     util::say_wo_unintended_mentions,
-    bots::{Bot, ConfigExt},
+    bots::{Bot, CfgExt},
 };
 use serenity::{
     async_trait,
@@ -69,7 +69,7 @@ impl Progress for EarnedRolePromptProgress {
                 };
                 app_state::sync::add_earned_role(
                     http,
-                    &bot.bot_config,
+                    &bot.cfg,
                     sorted_earned_roles,
                     users,
                     &bot.pool,
@@ -112,7 +112,7 @@ impl EarnedRolePromptReq {
 async fn role(ctx: &Context, msg: &Message) -> CommandResult {
     let subcommands = ROLE_COMMAND_OPTIONS.sub_commands;
     let rlock = ctx.data.read().await;
-    let bot_config = rlock.get::<BotConfigKey>().unwrap();
+    let bot_cfg = rlock.get::<BotCfgKey>().unwrap();
 
     let mut msg_builder = MessageBuilder::new();
     msg_builder.mention(&msg.author);
@@ -121,7 +121,7 @@ async fn role(ctx: &Context, msg: &Message) -> CommandResult {
     let actual_sub: Option<&str> = {
         let mut split_suffix = msg
             .content
-            .trim_start_matches(&bot_config.discord_prefix)
+            .trim_start_matches(&bot_cfg.discord_prefix)
             .trim_start_matches("role")
             .split_ascii_whitespace();
         split_suffix.next()
@@ -147,10 +147,10 @@ async fn role(ctx: &Context, msg: &Message) -> CommandResult {
         }
     };
 
-    bot_config.discord_bot_channel
+    bot_cfg.discord_bot_channel
         .say(&ctx.http, &msg_builder.build())
         .await?;
-    if msg.channel_id != bot_config.discord_bot_channel {
+    if msg.channel_id != bot_cfg.discord_bot_channel {
         msg.delete(&ctx).await?;
     }
 
@@ -160,8 +160,8 @@ async fn role(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 async fn ids(ctx: &Context, msg: &Message) -> CommandResult {
     let rlock = ctx.data.read().await;
-    let bot_config = rlock.get::<BotConfigKey>().unwrap();
-    let roles: HashMap<RoleId, Role> = bot_config.discord_server_id.roles(&ctx.http).await?;
+    let bot_cfg = rlock.get::<BotCfgKey>().unwrap();
+    let roles: HashMap<RoleId, Role> = bot_cfg.discord_server_id.roles(&ctx.http).await?;
 
     let response: String = {
         let mut msg_builder = MessageBuilder::new();
@@ -180,8 +180,8 @@ async fn ids(ctx: &Context, msg: &Message) -> CommandResult {
         msg_builder.build()
     };
 
-    say_wo_unintended_mentions(bot_config.discord_bot_channel, &ctx, Some(msg.author.id), &response).await?;
-    if msg.channel_id != bot_config.discord_bot_channel {
+    say_wo_unintended_mentions(bot_cfg.discord_bot_channel, &ctx, Some(msg.author.id), &response).await?;
+    if msg.channel_id != bot_cfg.discord_bot_channel {
         msg.delete(&ctx.http).await?;
     };
     Ok(())
@@ -191,7 +191,7 @@ async fn ids(ctx: &Context, msg: &Message) -> CommandResult {
 #[sub_commands(earned)]
 async fn add(ctx: &Context, msg: &Message) -> CommandResult {
     let rlock = ctx.data.read().await;
-    let bot_config = rlock.get::<BotConfigKey>().unwrap();
+    let bot_cfg = rlock.get::<BotCfgKey>().unwrap();
     let subcommands = ADD_COMMAND_OPTIONS.sub_commands;
 
     let mut msg_builder = MessageBuilder::new();
@@ -201,7 +201,7 @@ async fn add(ctx: &Context, msg: &Message) -> CommandResult {
     let actual_sub: Option<&str> = {
         let mut split_suffix = msg
             .content
-            .trim_start_matches(&bot_config.discord_prefix)
+            .trim_start_matches(&bot_cfg.discord_prefix)
             .trim_start_matches("role")
             .trim_start_matches(' ')
             .trim_start_matches("add")
@@ -229,10 +229,10 @@ async fn add(ctx: &Context, msg: &Message) -> CommandResult {
         }
     };
 
-    bot_config.discord_bot_channel
+    bot_cfg.discord_bot_channel
         .say(&ctx.http, &msg_builder.build())
         .await?;
-    if msg.channel_id != bot_config.discord_bot_channel {
+    if msg.channel_id != bot_cfg.discord_bot_channel {
         msg.delete(&ctx).await?;
     }
 
@@ -263,12 +263,12 @@ async fn earned(ctx: &Context, msg: &Message) -> CommandResult {
     }
 
     let rlock = ctx.data.read().await;
-    let bot_config = rlock.get::<BotConfigKey>().unwrap();
+    let bot_cfg = rlock.get::<BotCfgKey>().unwrap();
 
-    bot_config.discord_bot_channel
+    bot_cfg.discord_bot_channel
         .say(&ctx.http, &msg_builder.build())
         .await?;
-    if msg.channel_id != bot_config.discord_bot_channel {
+    if msg.channel_id != bot_cfg.discord_bot_channel {
         msg.delete(&ctx).await?;
     }
     Ok(())

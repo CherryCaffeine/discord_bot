@@ -1,6 +1,6 @@
-[tasks.ensure_config]
+[tasks.ensure_cfg]
 script_runner = "@shell"
 cwd = "./"
 script = '''
-cargo run --manifest-path ./cargo-make-scripts/ensure_config/Cargo.toml
+cargo run --manifest-path ./cargo-make-scripts/ensure_cfg/Cargo.toml
 '''

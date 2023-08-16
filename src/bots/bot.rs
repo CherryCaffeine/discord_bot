@@ -3,22 +3,32 @@ use shuttle_secrets::SecretStore;
 use sqlx::{PgPool, Executor};
 use tokio::sync::RwLockWriteGuard;
 
-use crate::{immut_data::{dynamic::BotConfig, consts::EXP_PER_MSG}, util::members, app_state::{AppState, type_map_keys::{AppStateKey, PgPoolKey}, exp::Exp, self}, commands::Progress};
+use crate::{immut_data::{dynamic::BotCfg, consts::EXP_PER_MSG}, util::members, app_state::{AppState, type_map_keys::{AppStateKey, PgPoolKey}, exp::Exp, self}, commands::Progress};
 
-use super::config_ext::{impl_config_ext, ConfigExt};
+use super::cfg_ext::{impl_cfg_ext, CfgExt};
 
+/// The bot structure that is used to
+/// 
+/// * populate the [Context::data] with run-time data during [EventHandler::ready].
+/// * handle [EventHandler] events.
+/// 
+/// Note that commands do not have the direct access to the [Bot] struct and
+/// use [Context::data] instead.
 pub(crate) struct Bot {
+    /// Database connection pool for PostgreSQL database.
+    /// It is used to persist data between restarts.
     pub(crate) pool: PgPool,
-    pub(crate) bot_config: BotConfig,
+    /// The configuration of the bot.
+    pub(crate) cfg: BotCfg,
 }
 
 impl Bot {
     pub(crate) async fn new(pool: PgPool, secret_store: SecretStore) -> Self {
-        let bot_config = BotConfig::new(secret_store);
+        let cfg = BotCfg::new(secret_store);
         pool.execute(crate::immut_data::consts::SCHEMA)
             .await
             .expect("Failed to initialize database");
-        Self { pool, bot_config }
+        Self { pool, cfg }
     }
 
     fn print_server_members(server: &PartialGuild, members: &[Member]) {
@@ -32,7 +42,7 @@ impl Bot {
     }
 }
 
-impl_config_ext!(Bot);
+impl_cfg_ext!(Bot);
 
 #[async_trait]
 impl EventHandler for Bot {
@@ -98,7 +108,7 @@ impl EventHandler for Bot {
             let author: Member = msg.member(&ctx).await.unwrap_or_else(|e| {
                 panic!("Failed to get member info for the message author: {e}")
             });
-            app_state::sync::add_signed_exp(&ctx.http, &self.bot_config, app_state, &self.pool, &author, EXP_PER_MSG)
+            app_state::sync::add_signed_exp(&ctx.http, &self.cfg, app_state, &self.pool, &author, EXP_PER_MSG)
                 .await
         };
 

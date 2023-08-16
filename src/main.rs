@@ -12,7 +12,11 @@ use bots::Bot;
 
 #[shuttle_runtime::main]
 async fn serenity(
+    // Database connection pool for PostgreSQL database.
+    // It is used to persist data between restarts.
     #[shuttle_shared_db::Postgres] pool: PgPool,
+    // Secret storage for Discord API token and non-sensitive data.
+    // It provides access to the data in Secrets.toml file.
     #[shuttle_secrets::Secrets] secret_store: SecretStore,
 ) -> shuttle_serenity::ShuttleSerenity {
     let bot = Bot::new(pool, secret_store).await;

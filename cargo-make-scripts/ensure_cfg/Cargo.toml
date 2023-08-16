@@ -1,5 +1,5 @@
 [package]
-name = "ensure_config"
+name = "ensure_cfg"
 version = "0.1.0"
 edition = "2021"
 

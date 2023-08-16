@@ -1,7 +1,7 @@
 
 const TRIPLE_SINGLE_QUOTES: &str = "\u{27}\u{27}\u{27}";
-const CONFIG_EXAMPLE_PATH: &str = "Secrets.example.toml";
-const CONFIG_PATH: &str = "Secrets.toml";
+const CFG_EXAMPLE_PATH: &str = "Secrets.example.toml";
+const CFG_PATH: &str = "Secrets.toml";
 
 #[derive(Default)]
 struct TidyStringReadBuffer(String);
@@ -37,17 +37,17 @@ where
     }
 }
 
-fn read_config_example(crate_root: impl AsRef<std::path::Path>) -> toml::Table {
-    let config_example: std::path::PathBuf = crate_root.as_ref().join(CONFIG_EXAMPLE_PATH);
-    let config_example = std::fs::read_to_string(&config_example)
-        .unwrap_or_else(|e| panic!("Failed to read {config_example:?}: {e:?}"));
-    toml::from_str(&config_example)
-        .unwrap_or_else(|e| panic!("Failed to parse {config_example:?}: {e:?}"))
+fn read_cfg_example(crate_root: impl AsRef<std::path::Path>) -> toml::Table {
+    let cfg_example: std::path::PathBuf = crate_root.as_ref().join(CFG_EXAMPLE_PATH);
+    let cfg_example = std::fs::read_to_string(&cfg_example)
+        .unwrap_or_else(|e| panic!("Failed to read {cfg_example:?}: {e:?}"));
+    toml::from_str(&cfg_example)
+        .unwrap_or_else(|e| panic!("Failed to parse {cfg_example:?}: {e:?}"))
 }
 
-pub fn output_config(config: &toml::Table, path: impl AsRef<std::path::Path>) {
+pub fn output_cfg(cfg: &toml::Table, path: impl AsRef<std::path::Path>) {
     let path = path.as_ref();
-    let pretty_toml = toml::to_string_pretty(&config).unwrap();
+    let pretty_toml = toml::to_string_pretty(&cfg).unwrap();
 
     println!();
     println!("Writing {path:?}...");
@@ -63,16 +63,16 @@ pub fn output_config(config: &toml::Table, path: impl AsRef<std::path::Path>) {
 }
 
 pub fn main() {
-    println!("\tENSURE CONFIG");
+    println!("\tENSURE CFG");
     let crate_root = std::env::current_dir().unwrap();
     println!("The bot directory: {}", crate_root.display());
 
-    let config_path = std::path::Path::new(CONFIG_PATH);
-    if config_path.exists() {
-        println!("{CONFIG_PATH} found");
+    let cfg_path = std::path::Path::new(CFG_PATH);
+    if cfg_path.exists() {
+        println!("{CFG_PATH} found");
         return;
     };
-    print!("{CONFIG_PATH} not found.\n\n");
+    print!("{CFG_PATH} not found.\n\n");
 
     let mut input = TidyStringReadBuffer::default();
 
@@ -102,14 +102,14 @@ pub fn main() {
         |UnexpectedInput| println!("Invalid input. Please input 'y' or 'n'."),
     );
 
-    let mut config: toml::Table = read_config_example(&crate_root);
+    let mut cfg: toml::Table = read_cfg_example(&crate_root);
 
     {
-        let token = config
+        let token = cfg
             .get_mut("DISCORD_TOKEN")
-            .unwrap_or_else(|| panic!("Failed to get token from {CONFIG_EXAMPLE_PATH}"));
+            .unwrap_or_else(|| panic!("Failed to get token from {CFG_EXAMPLE_PATH}"));
         let toml::Value::String(token) = token else {
-            panic!("Token in {CONFIG_EXAMPLE_PATH} is not a string");
+            panic!("Token in {CFG_EXAMPLE_PATH} is not a string");
         };
 
         print!("\nPlease enter your bot token:\n");
@@ -126,7 +126,7 @@ pub fn main() {
     println!("* A channel where the bot would track reaction for assigning roles (aka self-role channel).");
 
     println!();
-    println!("The default {CONFIG_EXAMPLE_PATH} uses the values for Cherry's server.");
+    println!("The default {CFG_EXAMPLE_PATH} uses the values for Cherry's server.");
     println!("Most likely, you'll want to use the values for your test server.");
     println!("Would you like to overwrite the default configuration values? [Recommended] (y/n)");
 
@@ -142,7 +142,7 @@ pub fn main() {
     );
 
     if !overwrite_default {
-        output_config(&config, config_path);
+        output_cfg(&cfg, cfg_path);
         return;
     };
 
@@ -196,11 +196,11 @@ pub fn main() {
     }
 
     {
-        let server_id: &mut toml::Value = config
+        let server_id: &mut toml::Value = cfg
             .get_mut("DISCORD_SERVER_ID")
-            .unwrap_or_else(|| panic!("Failed to get the server ID from {CONFIG_EXAMPLE_PATH}"));
+            .unwrap_or_else(|| panic!("Failed to get the server ID from {CFG_EXAMPLE_PATH}"));
         let toml::Value::String(server_id) = server_id else {
-            panic!("Server ID in {CONFIG_EXAMPLE_PATH} is not a string");
+            panic!("Server ID in {CFG_EXAMPLE_PATH} is not a string");
         };
 
         *server_id = repeat_until_succeeds(
@@ -223,11 +223,11 @@ pub fn main() {
 
     {
         let bot_channel: &mut toml::Value =
-            config.get_mut("DISCORD_BOT_CHANNEL").unwrap_or_else(|| {
-                panic!("Failed to get the bot channel ID from {CONFIG_EXAMPLE_PATH}")
+            cfg.get_mut("DISCORD_BOT_CHANNEL").unwrap_or_else(|| {
+                panic!("Failed to get the bot channel ID from {CFG_EXAMPLE_PATH}")
             });
         let toml::Value::String(bot_channel) = bot_channel else {
-            panic!("Bot channel ID in {CONFIG_EXAMPLE_PATH} is not a string");
+            panic!("Bot channel ID in {CFG_EXAMPLE_PATH} is not a string");
         };
 
         *bot_channel = repeat_until_succeeds(
@@ -255,11 +255,11 @@ pub fn main() {
 
     {
         let self_role: &mut toml::Value =
-            config.get_mut("DISCORD_SELF_ROLE_CHANNEL").unwrap_or_else(|| {
-                panic!("Failed to get the self-role channel ID from {CONFIG_EXAMPLE_PATH}")
+            cfg.get_mut("DISCORD_SELF_ROLE_CHANNEL").unwrap_or_else(|| {
+                panic!("Failed to get the self-role channel ID from {CFG_EXAMPLE_PATH}")
             });
         let toml::Value::String(self_role) = self_role else {
-            panic!("Self-role channel ID in {CONFIG_EXAMPLE_PATH} is not a string");
+            panic!("Self-role channel ID in {CFG_EXAMPLE_PATH} is not a string");
         };
 
         *self_role = repeat_until_succeeds(
@@ -283,5 +283,5 @@ pub fn main() {
         );
     }
 
-    output_config(&config, CONFIG_PATH);
+    output_cfg(&cfg, CFG_PATH);
 }

@@ -6,7 +6,7 @@ use serenity::{
 use sqlx::PgPool;
 
 use super::AppState;
-use crate::immut_data::dynamic::BotConfig;
+use crate::immut_data::dynamic::BotCfg;
 use crate::db;
 
 /// "Synchronized" way of adding experience points to a user.
@@ -14,7 +14,7 @@ use crate::db;
 /// "Synchronized" means that it updates both the database and the cache.
 pub(crate) async fn add_signed_exp(
     http: &Http,
-    bot_config: &BotConfig,
+    cfg: &BotCfg,
     app_state: &mut AppState,
     pool: &PgPool,
     member: &Member,
@@ -54,7 +54,7 @@ pub(crate) async fn add_signed_exp(
                     Some(r) => r.role_id,
                     None => unreachable!("The user has an invalid earned_role_idx"),
                 };
-                http.remove_member_role(bot_config.discord_server_id.0, user.discord_id.0, old_role.0, None)
+                http.remove_member_role(cfg.discord_server_id.0, user.discord_id.0, old_role.0, None)
                     .await?;
                 idx + 1
             }
@@ -70,7 +70,7 @@ pub(crate) async fn add_signed_exp(
             .get(next_earned_role_idx)
             .map(|r| r.exp_needed);
         http.add_member_role(
-            bot_config.discord_server_id.0,
+            cfg.discord_server_id.0,
             user.discord_id.0,
             next_earned_role_id.0,
             None,
@@ -83,7 +83,7 @@ pub(crate) async fn add_signed_exp(
 
 pub(crate) async fn add_earned_role(
     http: &Http,
-    bot_config: &BotConfig,
+    cfg: &BotCfg,
     sorted_earned_roles: &mut Vec<EarnedRole>,
     users: &mut [ServerMember],
     pool: &PgPool,
@@ -107,7 +107,7 @@ pub(crate) async fn add_earned_role(
             if sm.exp > exp_needed {
                 sm.earned_role_idx = Some(0);
                 sm.nxt_exp_milestone = None;
-                http.add_member_role(bot_config.discord_server_id.0, sm.discord_id.0, role_id.0, None)
+                http.add_member_role(cfg.discord_server_id.0, sm.discord_id.0, role_id.0, None)
                     .await?;
             } else {
                 sm.earned_role_idx = None;
@@ -132,9 +132,9 @@ pub(crate) async fn add_earned_role(
                     Some(r) => r.role_id,
                     None => unreachable!("The user has an invalid earned_role_idx"),
                 };
-                http.remove_member_role(bot_config.discord_server_id.0, sm.discord_id.0, old_role_id.0, None)
+                http.remove_member_role(cfg.discord_server_id.0, sm.discord_id.0, old_role_id.0, None)
                     .await?;
-                http.add_member_role(bot_config.discord_server_id.0, sm.discord_id.0, role_id.0, None)
+                http.add_member_role(cfg.discord_server_id.0, sm.discord_id.0, role_id.0, None)
                     .await?;
             }
         }
@@ -159,9 +159,9 @@ pub(crate) async fn add_earned_role(
                     let old_role: RoleId = sorted_earned_roles[*idx].role_id;
                     *idx += 1;
                     let new_role: RoleId = sorted_earned_roles[*idx].role_id;
-                    http.add_member_role(bot_config.discord_server_id.0, discord_id.0, new_role.0, None).await
+                    http.add_member_role(cfg.discord_server_id.0, discord_id.0, new_role.0, None).await
                         .unwrap_or_else(|e| panic!("Failed to give a role to a server member with discord_id={discord_id}: {e}"));
-                    http.remove_member_role(bot_config.discord_server_id.0, discord_id.0, old_role.0, None).await
+                    http.remove_member_role(cfg.discord_server_id.0, discord_id.0, old_role.0, None).await
                         .unwrap_or_else(|e| panic!("Failed to remove a role from a server member with discord_id: {discord_id}: {e}"));
                 }
                 _ => (),

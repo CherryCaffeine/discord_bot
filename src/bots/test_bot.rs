@@ -5,27 +5,30 @@ use shuttle_secrets::SecretStore;
 use sqlx::{PgPool, Executor};
 use tokio::sync::Mutex;
 
-use crate::{immut_data::dynamic::BotConfig, util::members, app_state::type_map_keys::ShardManagerKey};
+use crate::{immut_data::dynamic::BotCfg, util::members, app_state::type_map_keys::ShardManagerKey};
 
-use super::{config_ext::impl_config_ext, ConfigExt};
+use super::{cfg_ext::impl_cfg_ext, CfgExt};
 
 pub(crate) struct TestBot {
+    /// Database connection pool for PostgreSQL database.
+    /// It is used to persist data between restarts.
     #[allow(dead_code)]
-    pool: PgPool,
-    bot_config: BotConfig,
+    pub(crate) pool: PgPool,
+    /// The configuration of the bot.
+    pub(crate) cfg: BotCfg,
 }
 
 impl TestBot {
     pub(crate) async fn new(pool: PgPool, secret_store: SecretStore) -> Self {
-        let bot_config = BotConfig::new(secret_store);
+        let cfg = BotCfg::new(secret_store);
         pool.execute(crate::immut_data::consts::SCHEMA)
             .await
             .expect("Failed to initialize database");
-        Self { pool, bot_config }
+        Self { pool, cfg }
     }
 }
 
-impl_config_ext!(TestBot);
+impl_cfg_ext!(TestBot);
 
 #[async_trait]
 impl EventHandler for TestBot {
