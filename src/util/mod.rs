@@ -11,7 +11,7 @@ use tokio::sync::RwLockWriteGuard;
 
 use crate::{
     app_state::type_map_keys::{BotCfgKey, ShardManagerKey},
-    bots::CfgExt,
+    bots::Bot,
     commands::{GENERAL_GROUP, MY_HELP},
     immut_data::{self, consts::DISCORD_INTENTS},
 };
@@ -97,7 +97,7 @@ pub(super) async fn say_wo_unintended_mentions(
     Ok(())
 }
 
-pub(super) async fn build_client<B: EventHandler + CfgExt + 'static>(bot: B) -> Client {
+pub(super) async fn build_client<B: EventHandler + Bot + 'static>(bot: B) -> Client {
     let framework = StandardFramework::new()
         .configure(|c| {
             c.prefix(bot.discord_prefix());

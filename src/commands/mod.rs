@@ -24,7 +24,7 @@ use stop::STOP_COMMAND;
 
 use crate::{
     app_state::{EarnedRole, ServerMember},
-    Bot,
+    MainBot,
 };
 
 #[group]
@@ -35,7 +35,7 @@ struct General;
 pub(crate) trait Progress: Sized {
     async fn advance(
         &mut self,
-        bot: &Bot,
+        bot: &MainBot,
         http: &Http,
         sorted_earned_roles: &mut Vec<EarnedRole>,
         users: &mut Vec<ServerMember>,

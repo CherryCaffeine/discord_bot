@@ -7,7 +7,7 @@ mod commands;
 mod db;
 pub(crate) mod immut_data;
 pub(crate) mod util;
-use bots::Bot;
+use bots::MainBot;
 use util::build_client;
 
 #[shuttle_runtime::main]
@@ -19,7 +19,7 @@ async fn serenity(
     // It provides access to the data in Secrets.toml file.
     #[shuttle_secrets::Secrets] secret_store: SecretStore,
 ) -> shuttle_serenity::ShuttleSerenity {
-    let bot = Bot::new(pool, secret_store).await;
+    let bot = MainBot::new(pool, secret_store).await;
     let client = build_client(bot).await;
     Ok(client.into())
 }

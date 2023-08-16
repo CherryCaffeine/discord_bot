@@ -7,7 +7,7 @@ use crate::{
         type_map_keys::{AppStateKey, BotCfgKey},
         AppState,
     },
-    bots::{Bot, CfgExt},
+    bots::{Bot, MainBot},
     util::say_wo_unintended_mentions,
 };
 use serenity::{
@@ -31,7 +31,7 @@ pub(crate) enum EarnedRolePromptProgress {
 impl Progress for EarnedRolePromptProgress {
     async fn advance(
         &mut self,
-        bot: &Bot,
+        bot: &MainBot,
         http: &Http,
         sorted_earned_roles: &mut Vec<app_state::EarnedRole>,
         users: &mut Vec<app_state::ServerMember>,

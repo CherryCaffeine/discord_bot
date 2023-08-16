@@ -14,8 +14,11 @@ use crate::{
     app_state::type_map_keys::ShardManagerKey, immut_data::dynamic::BotCfg, util::members,
 };
 
-use super::{cfg_ext::impl_cfg_ext, CfgExt};
+use super::{bot::impl_bot, Bot};
 
+/// The bot structure that is used to execute tests during [EventHandler::ready] event.
+///
+/// The actual bot is [`MainBot`](crate::bots::MainBot).
 pub(crate) struct TestBot {
     /// Database connection pool for PostgreSQL database.
     /// It is used to persist data between restarts.
@@ -26,6 +29,7 @@ pub(crate) struct TestBot {
 }
 
 impl TestBot {
+    /// Creates a new instance of the bot.
     pub(crate) async fn new(pool: PgPool, secret_store: SecretStore) -> Self {
         let cfg = BotCfg::new(secret_store);
         pool.execute(crate::immut_data::consts::SCHEMA)
@@ -35,7 +39,7 @@ impl TestBot {
     }
 }
 
-impl_cfg_ext!(TestBot);
+impl_bot!(TestBot);
 
 #[async_trait]
 impl EventHandler for TestBot {
